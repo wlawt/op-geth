@@ -50,6 +50,7 @@ const (
 	AccessListTxType = 0x01
 	DynamicFeeTxType = 0x02
 	BlobTxType       = 0x03
+	BLSTxType        = 0x04
 )
 
 // Transaction is an Ethereum transaction.
@@ -211,6 +212,8 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 		inner = new(DynamicFeeTx)
 	case BlobTxType:
 		inner = new(BlobTx)
+	case BLSTxType:
+		inner = new(BLSTx)
 	case DepositTxType:
 		inner = new(DepositTx)
 	default:
@@ -366,6 +369,7 @@ func (tx *Transaction) Cost() *big.Int {
 	if tx.Type() == BlobTxType {
 		total.Add(total, new(big.Int).Mul(tx.BlobGasFeeCap(), new(big.Int).SetUint64(tx.BlobGas())))
 	}
+	// TODO: if tx.Type() == BLSTxType {}
 	total.Add(total, tx.Value())
 	return total
 }
