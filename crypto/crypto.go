@@ -29,6 +29,7 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -101,6 +102,25 @@ func Keccak512(data ...[]byte) []byte {
 		d.Write(b)
 	}
 	return d.Sum(nil)
+}
+
+func BLSToECDSAPrivateKey(pk *bls.PublicKey) (*ecdsa.PrivateKey, error) {
+	pkBytes := bls.PublicKeyToCompressedBytes(pk)
+	ecdsaPk, err := ToECDSA(pkBytes)
+	if err != nil {
+		return nil, err
+	}
+	return ecdsaPk, nil
+}
+
+// Convert a BLS Public Key (48 bytes) into an [Address]
+func BLSToAddress(pk *bls.PublicKey) (common.Address, error) {
+	ecdsaPk, err := BLSToECDSAPrivateKey(pk)
+	if err != nil {
+		return common.Address{}, err
+	}
+	hash := Keccak256(FromECDSA(ecdsaPk))
+	return common.BytesToAddress(hash[12:]), nil
 }
 
 // CreateAddress creates an ethereum address given the bytes and the nonce

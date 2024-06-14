@@ -85,6 +85,7 @@ var (
 		TerminalTotalDifficultyPassed: true,
 		ShanghaiTime:                  newUint64(1681338455),
 		CancunTime:                    newUint64(1710338135),
+		BLSTime:                       newUint64(1710338135),
 		Ethash:                        new(EthashConfig),
 	}
 	// HoleskyChainConfig contains the chain parameters to run a node on the Holesky test network.
@@ -110,6 +111,7 @@ var (
 		MergeNetsplitBlock:            nil,
 		ShanghaiTime:                  newUint64(1696000704),
 		CancunTime:                    newUint64(1707305664),
+		BLSTime:                       newUint64(1707305664),
 		Ethash:                        new(EthashConfig),
 	}
 	// SepoliaChainConfig contains the chain parameters to run a node on the Sepolia test network.
@@ -135,6 +137,7 @@ var (
 		MergeNetsplitBlock:            big.NewInt(1735371),
 		ShanghaiTime:                  newUint64(1677557088),
 		CancunTime:                    newUint64(1706655072),
+		BLSTime:                       newUint64(1706655072),
 		Ethash:                        new(EthashConfig),
 	}
 	// GoerliChainConfig contains the chain parameters to run a node on the Görli test network.
@@ -158,6 +161,7 @@ var (
 		TerminalTotalDifficultyPassed: true,
 		ShanghaiTime:                  newUint64(1678832736),
 		CancunTime:                    newUint64(1705473120),
+		BLSTime:                       newUint64(1705473120),
 		Clique: &CliqueConfig{
 			Period: 15,
 			Epoch:  30000,
@@ -187,6 +191,7 @@ var (
 		CancunTime:                    nil,
 		PragueTime:                    nil,
 		VerkleTime:                    nil,
+		BLSTime:                       nil,
 		TerminalTotalDifficulty:       nil,
 		TerminalTotalDifficultyPassed: true,
 		Ethash:                        new(EthashConfig),
@@ -237,6 +242,7 @@ var (
 		CancunTime:                    nil,
 		PragueTime:                    nil,
 		VerkleTime:                    nil,
+		BLSTime:                       nil,
 		TerminalTotalDifficulty:       nil,
 		TerminalTotalDifficultyPassed: false,
 		Ethash:                        nil,
@@ -267,6 +273,7 @@ var (
 		CancunTime:                    nil,
 		PragueTime:                    nil,
 		VerkleTime:                    nil,
+		BLSTime:                       nil,
 		TerminalTotalDifficulty:       nil,
 		TerminalTotalDifficultyPassed: false,
 		Ethash:                        new(EthashConfig),
@@ -297,6 +304,7 @@ var (
 		CancunTime:                    newUint64(0),
 		PragueTime:                    nil,
 		VerkleTime:                    nil,
+		BLSTime:                       newUint64(0),
 		TerminalTotalDifficulty:       big.NewInt(0),
 		TerminalTotalDifficultyPassed: true,
 		Ethash:                        new(EthashConfig),
@@ -327,6 +335,7 @@ var (
 		CancunTime:                    nil,
 		PragueTime:                    nil,
 		VerkleTime:                    nil,
+		BLSTime:                       nil,
 		TerminalTotalDifficulty:       nil,
 		TerminalTotalDifficultyPassed: false,
 		Ethash:                        new(EthashConfig),
@@ -395,6 +404,8 @@ type ChainConfig struct {
 	// Delta: the Delta upgrade does not affect the execution-layer, and is thus not configurable in the chain config.
 	EcotoneTime *uint64 `json:"ecotoneTime,omitempty"` // Ecotone switch time (nil = no fork, 0 = already on optimism ecotone)
 	FjordTime   *uint64 `json:"fjordTime,omitempty"`   // Fjord switch time (nil = no fork, 0 = already on Optimism Fjord)
+
+	BLSTime *uint64 `json:"blsTime, omitempty"`
 
 	InteropTime *uint64 `json:"interopTime,omitempty"` // Interop switch time (nil = no fork, 0 = already on optimism interop)
 
@@ -653,6 +664,11 @@ func (c *ChainConfig) IsPrague(num *big.Int, time uint64) bool {
 // IsVerkle returns whether num is either equal to the Verkle fork time or greater.
 func (c *ChainConfig) IsVerkle(num *big.Int, time uint64) bool {
 	return c.IsLondon(num) && isTimestampForked(c.VerkleTime, time)
+}
+
+// IsEIP7591 returns whether or not we're supporting BLS transactions.
+func (c *ChainConfig) IsEIP7591(num *big.Int, time uint64) bool {
+	return c.IsCancun(num, time)
 }
 
 // IsBedrock returns whether num is either equal to the Bedrock fork block or greater.
@@ -1068,7 +1084,7 @@ type Rules struct {
 	IsHomestead, IsEIP150, IsEIP155, IsEIP158               bool
 	IsByzantium, IsConstantinople, IsPetersburg, IsIstanbul bool
 	IsBerlin, IsLondon                                      bool
-	IsMerge, IsShanghai, IsCancun, IsPrague                 bool
+	IsMerge, IsShanghai, IsCancun, IsPrague, IsEIP7591      bool
 	IsVerkle                                                bool
 	IsOptimismBedrock, IsOptimismRegolith                   bool
 	IsOptimismCanyon, IsOptimismFjord                       bool
@@ -1099,6 +1115,7 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool, timestamp uint64) Rules 
 		IsCancun:         isMerge && c.IsCancun(num, timestamp),
 		IsPrague:         isMerge && c.IsPrague(num, timestamp),
 		IsVerkle:         isMerge && c.IsVerkle(num, timestamp),
+		IsEIP7591:        isMerge && c.IsEIP7591(num, timestamp),
 		// Optimism
 		IsOptimismBedrock:  isMerge && c.IsOptimismBedrock(num),
 		IsOptimismRegolith: isMerge && c.IsOptimismRegolith(timestamp),
