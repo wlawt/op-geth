@@ -369,7 +369,6 @@ func (tx *Transaction) Cost() *big.Int {
 	if tx.Type() == BlobTxType {
 		total.Add(total, new(big.Int).Mul(tx.BlobGasFeeCap(), new(big.Int).SetUint64(tx.BlobGas())))
 	}
-	// TODO: if tx.Type() == BLSTxType {}
 	total.Add(total, tx.Value())
 	return total
 }
@@ -531,6 +530,26 @@ func (tx *Transaction) WithoutBlobTxSidecar() *Transaction {
 		cpy.from.Store(f)
 	}
 	return cpy
+}
+
+// PublicKey returns the account address of a transaction.
+func (tx *Transaction) PublicKey() common.Address {
+	if blstx, ok := tx.inner.(*BLSTx); ok {
+		addr, err := crypto.BLSToAddress(blstx.publicKey())
+		if err != nil {
+			return common.Address{}
+		}
+		return addr
+	}
+	return common.Address{}
+}
+
+// Signature returns the BLS Signature of a transaction.
+func (tx *Transaction) Signature() []byte {
+	if blstx, ok := tx.inner.(*BLSTx); ok {
+		return blstx.signature()
+	}
+	return nil
 }
 
 // SetTime sets the decoding time of a transaction. This is used by tests to set

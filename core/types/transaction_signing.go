@@ -40,6 +40,8 @@ type sigCache struct {
 func MakeSigner(config *params.ChainConfig, blockNumber *big.Int, blockTime uint64) Signer {
 	var signer Signer
 	switch {
+	case config.IsEIP7591(blockNumber, blockTime):
+		signer = NewBLSSigner(config.ChainID)
 	case config.IsCancun(blockNumber, blockTime) && !config.IsOptimism():
 		signer = NewCancunSigner(config.ChainID)
 	case config.IsLondon(blockNumber):
@@ -65,6 +67,9 @@ func MakeSigner(config *params.ChainConfig, blockNumber *big.Int, blockTime uint
 // have the current block number available, use MakeSigner instead.
 func LatestSigner(config *params.ChainConfig) Signer {
 	if config.ChainID != nil {
+		if config.BLSTime != nil {
+			return NewBLSSigner(config.ChainID)
+		}
 		if config.CancunTime != nil && !config.IsOptimism() {
 			return NewCancunSigner(config.ChainID)
 		}
@@ -173,6 +178,54 @@ type Signer interface {
 
 	// Equal returns true if the given signer is the same as the receiver.
 	Equal(Signer) bool
+}
+
+type blsSigner struct{ cancunSigner }
+
+func NewBLSSigner(chainId *big.Int) Signer {
+	return blsSigner{cancunSigner{londonSigner{eip2930Signer{NewEIP155Signer(chainId)}}}}
+}
+
+func (b blsSigner) Sender(tx *Transaction) (common.Address, error) {
+	if tx.Type() != BLSTxType {
+		return b.cancunSigner.Sender(tx)
+	}
+	if tx.ChainId().Cmp(b.chainId) != 0 {
+		return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), b.chainId)
+	}
+	return tx.PublicKey(), nil
+}
+
+func (b blsSigner) Equal(s2 Signer) bool {
+	x, ok := s2.(blsSigner)
+	return ok && x.chainId.Cmp(b.chainId) == 0
+}
+
+func (b blsSigner) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
+	return common.Big0, common.Big0, common.Big0, nil
+}
+
+// Hash returns the hash to be signed by the sender.
+// It does not uniquely identify the transaction.
+func (b blsSigner) Hash(tx *Transaction) common.Hash {
+	if tx.Type() != BLSTxType {
+		return b.cancunSigner.Hash(tx)
+	}
+	return prefixedRlpHash(
+		tx.Type(),
+		[]interface{}{
+			b.chainId,
+			tx.Nonce(),
+			tx.GasTipCap(),
+			tx.GasFeeCap(),
+			tx.Gas(),
+			tx.To(),
+			tx.Value(),
+			tx.Data(),
+			tx.AccessList(),
+			tx.PublicKey(),
+			tx.Signature(),
+		})
 }
 
 type cancunSigner struct{ londonSigner }
