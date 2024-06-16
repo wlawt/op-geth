@@ -55,7 +55,8 @@ func (k *key) createEmptyBLSTxInner() *BLSTx {
 	}
 }
 
-func TestBLSTxHashing(t *testing.T) {
+// Test to see if BLS signer works.
+func TestBLSTxSigning(t *testing.T) {
 	k, err := newKey()
 	if err != nil {
 		t.Fatal("error creating keys:", err)
