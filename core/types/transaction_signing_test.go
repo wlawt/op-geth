@@ -181,7 +181,7 @@ func TestNilSigner(t *testing.T) {
 					t.Fatal("error creating key")
 				}
 				blstx := k.createEmptyBLSTxInner(5)
-				ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
+				ecdsaPrivKey, err := crypto.BLSToECDSA(k.sk)
 				if err != nil {
 					t.Fatal("error converting BLS to ECDSA private key:", err)
 				}

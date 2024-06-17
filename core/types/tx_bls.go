@@ -101,6 +101,7 @@ func (tx *BLSTx) effectiveGasPrice(dst *big.Int, baseFee *big.Int) *big.Int {
 	return tip.Add(tip, baseFee)
 }
 
+// CREATE GETTER/SETTER for bls signatures
 // TODO: fix me
 func (tx *BLSTx) rawSignatureValues() (v, r, s *big.Int) {
 	return common.Big0, common.Big0, common.Big0

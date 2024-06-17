@@ -31,7 +31,7 @@ func (k *key) createEmptyBLSTx() (*Transaction, error) {
 	blstx := k.createEmptyBLSTxInner(5)
 	signer := NewBLSSigner(blstx.ChainID.ToBig())
 
-	ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
+	ecdsaPrivKey, err := crypto.BLSToECDSA(k.sk)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func TestBLSTxSize(t *testing.T) {
 	}
 
 	// Setup ECDSA signer
-	ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
+	ecdsaPrivKey, err := crypto.BLSToECDSA(k.sk)
 	if err != nil {
 		t.Fatal("error converting BLS to ECDSA private key:", err)
 	}
@@ -115,7 +115,7 @@ func TestBLSTxCoding(t *testing.T) {
 		t.Fatal("error creating keys:", err)
 	}
 
-	ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
+	ecdsaPrivKey, err := crypto.BLSToECDSA(k.sk)
 	if err != nil {
 		t.Fatal("error converting BLS to ECDSA private key:", err)
 	}
