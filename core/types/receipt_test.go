@@ -157,6 +157,8 @@ var (
 		Type: DepositTxType,
 	}
 
+	k, _ = newKey()
+
 	// Create a few transactions to have receipts for
 	to2 = common.HexToAddress("0x2")
 	to3 = common.HexToAddress("0x3")
@@ -223,6 +225,7 @@ var (
 			BlobFeeCap: uint256.NewInt(100077),
 			BlobHashes: []common.Hash{{}, {}, {}},
 		}),
+		NewTx(k.createEmptyBLSTxInner(8)),
 		NewTx(&DepositTx{
 			To:    nil, // contract creation
 			Value: big.NewInt(6),
@@ -380,17 +383,30 @@ var (
 			TransactionIndex:  6,
 		},
 		&Receipt{
+			Type:              BLSTxType,
+			PostState:         common.Hash{7}.Bytes(),
+			CumulativeGasUsed: 36,
+			Logs:              []*Log{},
+			// derived fields:
+			TxHash:            txs[7].Hash(),
+			GasUsed:           8,
+			EffectiveGasPrice: big.NewInt(5),
+			BlockHash:         blockHash,
+			BlockNumber:       blockNumber,
+			TransactionIndex:  7,
+		},
+		&Receipt{
 			Type:              DepositTxType,
 			PostState:         common.Hash{5}.Bytes(),
-			CumulativeGasUsed: 50 + 28,
+			CumulativeGasUsed: 50 + 36,
 			Logs: []*Log{
 				{
 					Address: common.BytesToAddress([]byte{0x33}),
 					Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
 					// derived fields:
 					BlockNumber: blockNumber.Uint64(),
-					TxHash:      txs[7].Hash(),
-					TxIndex:     7,
+					TxHash:      txs[8].Hash(),
+					TxIndex:     8,
 					BlockHash:   blockHash,
 					Index:       4,
 				},
@@ -399,34 +415,34 @@ var (
 					Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
 					// derived fields:
 					BlockNumber: blockNumber.Uint64(),
-					TxHash:      txs[7].Hash(),
-					TxIndex:     7,
+					TxHash:      txs[8].Hash(),
+					TxIndex:     8,
 					BlockHash:   blockHash,
 					Index:       5,
 				},
 			},
-			TxHash:                txs[7].Hash(),
+			TxHash:                txs[8].Hash(),
 			ContractAddress:       common.HexToAddress("0x3bb898b4bbe24f68a4e9be46cfe72d1787fd74f4"),
 			GasUsed:               50,
 			EffectiveGasPrice:     big.NewInt(0),
 			BlockHash:             blockHash,
 			BlockNumber:           blockNumber,
-			TransactionIndex:      7,
+			TransactionIndex:      8,
 			DepositNonce:          &depNonce1,
 			DepositReceiptVersion: nil,
 		},
 		&Receipt{
 			Type:              DepositTxType,
 			PostState:         common.Hash{5}.Bytes(),
-			CumulativeGasUsed: 60 + 50 + 28,
+			CumulativeGasUsed: 60 + 50 + 36,
 			Logs: []*Log{
 				{
 					Address: common.BytesToAddress([]byte{0x33}),
 					Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
 					// derived fields:
 					BlockNumber: blockNumber.Uint64(),
-					TxHash:      txs[8].Hash(),
-					TxIndex:     8,
+					TxHash:      txs[9].Hash(),
+					TxIndex:     9,
 					BlockHash:   blockHash,
 					Index:       6,
 				},
@@ -435,19 +451,19 @@ var (
 					Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
 					// derived fields:
 					BlockNumber: blockNumber.Uint64(),
-					TxHash:      txs[8].Hash(),
-					TxIndex:     8,
+					TxHash:      txs[9].Hash(),
+					TxIndex:     9,
 					BlockHash:   blockHash,
 					Index:       7,
 				},
 			},
-			TxHash:                txs[8].Hash(),
+			TxHash:                txs[9].Hash(),
 			ContractAddress:       common.HexToAddress("0x117814af22cb83d8ad6e8489e9477d28265bc105"),
 			GasUsed:               60,
 			EffectiveGasPrice:     big.NewInt(0),
 			BlockHash:             blockHash,
 			BlockNumber:           blockNumber,
-			TransactionIndex:      8,
+			TransactionIndex:      9,
 			DepositNonce:          &depNonce2,
 			DepositReceiptVersion: &canyonDepositReceiptVersion,
 		},
