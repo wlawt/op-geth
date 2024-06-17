@@ -101,16 +101,18 @@ func (tx *BLSTx) effectiveGasPrice(dst *big.Int, baseFee *big.Int) *big.Int {
 	return tip.Add(tip, baseFee)
 }
 
-// CREATE GETTER/SETTER for bls signatures
-// TODO: fix me
+// Sets BLS signature
+func (tx *BLSTx) setSignature(sig []byte) {
+	copy(tx.Signature, sig)
+}
+
+// This is a no-op as we use BLS Signatures over ECDSA Signatures.
 func (tx *BLSTx) rawSignatureValues() (v, r, s *big.Int) {
 	return common.Big0, common.Big0, common.Big0
 }
 
-// TODO: fix me
-func (tx *BLSTx) setSignatureValues(chainID, _, _, _ *big.Int) {
-	// no-op
-}
+// This is also a no-op.
+func (tx *BLSTx) setSignatureValues(chainID, _, _, _ *big.Int) {}
 
 func (tx *BLSTx) encode(b *bytes.Buffer) error {
 	return rlp.Encode(b, tx)
