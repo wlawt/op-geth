@@ -28,7 +28,7 @@ func newKey() (*key, error) {
 }
 
 func (k *key) createEmptyBLSTx() (*Transaction, error) {
-	blstx := k.createEmptyBLSTxInner()
+	blstx := k.createEmptyBLSTxInner(5)
 	signer := NewBLSSigner(blstx.ChainID.ToBig())
 
 	ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
@@ -38,12 +38,12 @@ func (k *key) createEmptyBLSTx() (*Transaction, error) {
 	return MustSignNewTx(ecdsaPrivKey, signer, blstx), nil
 }
 
-func (k *key) createEmptyBLSTxInner() *BLSTx {
+func (k *key) createEmptyBLSTxInner(nonce uint64) *BLSTx {
 	msg := make([]byte, 50)
 	sig := bls.SignatureToBytes(bls.Sign(k.sk, msg))
 	return &BLSTx{
 		ChainID:   uint256.NewInt(1),
-		Nonce:     5,
+		Nonce:     nonce,
 		GasTipCap: uint256.NewInt(22),
 		GasFeeCap: uint256.NewInt(5),
 		Gas:       25000,
@@ -83,7 +83,7 @@ func TestBLSTxSize(t *testing.T) {
 	}
 
 	// Build and sign transaction
-	txdata := k.createEmptyBLSTxInner()
+	txdata := k.createEmptyBLSTxInner(5)
 	signer := NewBLSSigner(txdata.ChainID.ToBig())
 	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
 	if err != nil {
@@ -120,7 +120,7 @@ func TestBLSTxCoding(t *testing.T) {
 		t.Fatal("error converting BLS to ECDSA private key:", err)
 	}
 
-	txdata := k.createEmptyBLSTxInner()
+	txdata := k.createEmptyBLSTxInner(5)
 	signer := NewBLSSigner(txdata.ChainID.ToBig())
 	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
 	if err != nil {
