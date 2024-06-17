@@ -193,7 +193,11 @@ func (b blsSigner) Sender(tx *Transaction) (common.Address, error) {
 	if tx.ChainId().Cmp(b.chainId) != 0 {
 		return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), b.chainId)
 	}
-	return tx.PublicKey(), nil
+	addr, err := crypto.BLSToAddress(tx.PublicKey())
+	if err != nil {
+		return common.Address{}, err
+	}
+	return addr, nil
 }
 
 func (b blsSigner) Equal(s2 Signer) bool {
