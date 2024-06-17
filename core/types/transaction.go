@@ -30,6 +30,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 var (
@@ -532,16 +534,12 @@ func (tx *Transaction) WithoutBlobTxSidecar() *Transaction {
 	return cpy
 }
 
-// PublicKey returns the account address of a transaction.
-func (tx *Transaction) PublicKey() common.Address {
+// PublicKey returns the BLS Public Key of a transaction.
+func (tx *Transaction) PublicKey() *bls.PublicKey {
 	if blstx, ok := tx.inner.(*BLSTx); ok {
-		addr, err := crypto.BLSToAddress(blstx.publicKey())
-		if err != nil {
-			return common.Address{}
-		}
-		return addr
+		return blstx.publicKey()
 	}
-	return common.Address{}
+	return nil
 }
 
 // Signature returns the BLS Signature of a transaction.

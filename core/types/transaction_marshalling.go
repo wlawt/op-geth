@@ -65,7 +65,7 @@ type txJSON struct {
 
 	// BLS transaction fields
 	PublicKey *bls.PublicKey `json:"publicKey,omitempty"`
-	Signature *hexutil.Bytes `json:"signature,omitempty"`
+	Signature []byte         `json:"signature,omitempty"`
 
 	// Only used for encoding:
 	Hash common.Hash `json:"hash"`
@@ -181,8 +181,8 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.V = (*hexutil.Big)(common.Big0)
 		enc.R = (*hexutil.Big)(common.Big0)
 		enc.S = (*hexutil.Big)(common.Big0)
-		enc.PublicKey = (*bls.PublicKey)(itx.PublicKey)
-		enc.Signature = (*hexutil.Bytes)(&itx.Signature)
+		enc.PublicKey = tx.PublicKey()
+		enc.Signature = tx.Signature()
 
 	case *DepositTx:
 		enc.Gas = (*hexutil.Uint64)(&itx.Gas)
@@ -491,7 +491,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			itx.AccessList = *dec.AccessList
 		}
 		itx.PublicKey = dec.PublicKey
-		itx.Signature = *dec.Signature
+		itx.Signature = dec.Signature
 
 	case DepositTxType:
 		if dec.AccessList != nil || dec.MaxFeePerGas != nil ||
