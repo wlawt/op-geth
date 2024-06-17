@@ -104,25 +104,24 @@ func Keccak512(data ...[]byte) []byte {
 	return d.Sum(nil)
 }
 
-func BLSToECDSAPrivateKey(pk *bls.PublicKey) (*ecdsa.PrivateKey, error) {
-	// CompressedBytes returns 48 bytes. However, ToECDSA
-	// requires 32 bytes (256 bits), so we use Keccak.
-	pkBytes := Keccak256(bls.PublicKeyToCompressedBytes(pk))
-	ecdsaPk, err := ToECDSA(pkBytes)
+// Both the BLS and ECDSA private key uses random 32 bytes. Therefore, we can
+// have these 32 bytes represent 2 different account types (BLS and ECDSA).
+//
+// Dealing with private keys should be abstracted on the wallet level. This
+// is mainly used for testing.
+func BLSToECDSA(privKey *bls.SecretKey) (*ecdsa.PrivateKey, error) {
+	privBytes := bls.SecretKeyToBytes(privKey)
+	ecdsaPrivKey, err := ToECDSA(privBytes)
 	if err != nil {
 		return nil, err
 	}
-	return ecdsaPk, nil
+	return ecdsaPrivKey, nil
 }
 
 // Convert a BLS Public Key (48 bytes) into an [Address]
 func BLSToAddress(pk *bls.PublicKey) (common.Address, error) {
-	ecdsaPk, err := BLSToECDSAPrivateKey(pk)
-	if err != nil {
-		return common.Address{}, err
-	}
-	hash := Keccak256(FromECDSA(ecdsaPk))
-	return common.BytesToAddress(hash[12:]), nil
+	pkBytes := Keccak256(bls.PublicKeyToCompressedBytes(pk))
+	return common.BytesToAddress(pkBytes[12:]), nil
 }
 
 // CreateAddress creates an ethereum address given the bytes and the nonce
