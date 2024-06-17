@@ -17,7 +17,8 @@ type key struct {
 	sk *bls.SecretKey
 }
 
-// Create a new BLS public and secret key
+// Create a new BLS public and secret key. This should
+// only be used for testing.
 func newKey() (*key, error) {
 	sk, err := bls.NewSecretKey()
 	if err != nil {
@@ -69,6 +70,7 @@ func TestBLSTxSigning(t *testing.T) {
 	t.Log("tx hash:", hash)
 }
 
+// Test BLS transaction size after marshal/unmarshal.
 func TestBLSTxSize(t *testing.T) {
 	// Create BLS key
 	k, err := newKey()
@@ -109,6 +111,7 @@ func TestBLSTxSize(t *testing.T) {
 	}
 }
 
+// Test BLS encoding/decoding for RLP and JSON.
 func TestBLSTxCoding(t *testing.T) {
 	k, err := newKey()
 	if err != nil {
