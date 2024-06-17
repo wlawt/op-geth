@@ -105,7 +105,9 @@ func Keccak512(data ...[]byte) []byte {
 }
 
 func BLSToECDSAPrivateKey(pk *bls.PublicKey) (*ecdsa.PrivateKey, error) {
-	pkBytes := bls.PublicKeyToCompressedBytes(pk)
+	// CompressedBytes returns 48 bytes. However, ToECDSA
+	// requires 32 bytes (256 bits), so we use Keccak.
+	pkBytes := Keccak256(bls.PublicKeyToCompressedBytes(pk))
 	ecdsaPk, err := ToECDSA(pkBytes)
 	if err != nil {
 		return nil, err

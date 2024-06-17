@@ -31,7 +31,7 @@ func (k *key) createEmptyBLSTx() (*Transaction, error) {
 	blstx := k.createEmptyBLSTxInner()
 	signer := NewBLSSigner(blstx.ChainID.ToBig())
 
-	ecdsaSk, err := crypto.BLSToECDSAPrivateKey(k.sk)
+	ecdsaSk, err := crypto.BLSToECDSAPrivateKey(k.pk)
 	if err != nil {
 		return nil, err
 	}
