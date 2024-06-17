@@ -31,11 +31,11 @@ func (k *key) createEmptyBLSTx() (*Transaction, error) {
 	blstx := k.createEmptyBLSTxInner()
 	signer := NewBLSSigner(blstx.ChainID.ToBig())
 
-	ecdsaSk, err := crypto.BLSToECDSAPrivateKey(k.pk)
+	ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
 	if err != nil {
 		return nil, err
 	}
-	return MustSignNewTx(ecdsaSk, signer, blstx), nil
+	return MustSignNewTx(ecdsaPrivKey, signer, blstx), nil
 }
 
 func (k *key) createEmptyBLSTxInner() *BLSTx {
@@ -67,4 +67,81 @@ func TestBLSTxSigning(t *testing.T) {
 	}
 	hash := tx.Hash()
 	t.Log("tx hash:", hash)
+}
+
+func TestBLSTxSize(t *testing.T) {
+	// Create BLS key
+	k, err := newKey()
+	if err != nil {
+		t.Fatal("error creating keys:", err)
+	}
+
+	// Setup ECDSA signer
+	ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
+	if err != nil {
+		t.Fatal("error converting BLS to ECDSA private key:", err)
+	}
+
+	// Build and sign transaction
+	txdata := k.createEmptyBLSTxInner()
+	signer := NewBLSSigner(txdata.ChainID.ToBig())
+	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
+	if err != nil {
+		t.Fatal("error signing tx:", err)
+	}
+	bin, _ := tx.MarshalBinary()
+
+	// Check initial calc
+	if have, want := int(tx.Size()), len(bin); have != want {
+		t.Errorf("size wrong, have %d want %d", have, want)
+	}
+	// Check cached version too
+	if have, want := int(tx.Size()), len(bin); have != want {
+		t.Errorf("(cached) size wrong, have %d want %d", have, want)
+	}
+	// Check unmarshalled version too
+	utx := new(Transaction)
+	if err := utx.UnmarshalBinary(bin); err != nil {
+		t.Fatalf("failed to unmarshal tx: %v", err)
+	}
+	if have, want := int(utx.Size()), len(bin); have != want {
+		t.Errorf("(unmarshalled) size wrong, have %d want %d", have, want)
+	}
+}
+
+func TestBLSTxCoding(t *testing.T) {
+	k, err := newKey()
+	if err != nil {
+		t.Fatal("error creating keys:", err)
+	}
+
+	ecdsaPrivKey, err := crypto.BLSToECDSAPrivateKey(k.pk)
+	if err != nil {
+		t.Fatal("error converting BLS to ECDSA private key:", err)
+	}
+
+	txdata := k.createEmptyBLSTxInner()
+	signer := NewBLSSigner(txdata.ChainID.ToBig())
+	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
+	if err != nil {
+		t.Fatal("error signing tx:", err)
+	}
+
+	// RLP
+	parsedTx, err := encodeDecodeBinary(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := assertEqual(parsedTx, tx); err != nil {
+		t.Fatal(err)
+	}
+
+	// JSON
+	parsedTx, err = encodeDecodeJSON(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := assertEqual(parsedTx, tx); err != nil {
+		t.Fatal(err)
+	}
 }
