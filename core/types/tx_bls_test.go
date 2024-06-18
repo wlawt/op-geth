@@ -28,6 +28,7 @@ func newKey() (*key, error) {
 	return &key{pk, sk}, nil
 }
 
+// Creates a dummy BLS transaction.
 func (k *key) createEmptyBLSTx() (*Transaction, error) {
 	blstx := k.createEmptyBLSTxInner(5)
 	signer := NewBLSSigner(blstx.ChainID.ToBig())
@@ -39,6 +40,7 @@ func (k *key) createEmptyBLSTx() (*Transaction, error) {
 	return MustSignNewTx(ecdsaPrivKey, signer, blstx), nil
 }
 
+// Create the BLS txData.
 func (k *key) createEmptyBLSTxInner(nonce uint64) *BLSTx {
 	msg := make([]byte, 50)
 	sig := bls.SignatureToBytes(bls.Sign(k.sk, msg))
