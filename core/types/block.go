@@ -93,6 +93,9 @@ type Header struct {
 
 	// ParentBeaconRoot was added by EIP-4788 and is ignored in legacy headers.
 	ParentBeaconRoot *common.Hash `json:"parentBeaconBlockRoot" rlp:"optional"`
+
+	// AggregatedSig was added by EIP-7591 and is ignored in legacy headers.
+	AggregatedSig []byte `json:"aggregatedSig" rlp:"optional"`
 }
 
 // field type overrides for gencodec
@@ -107,6 +110,7 @@ type headerMarshaling struct {
 	Hash          common.Hash `json:"hash"` // adds call to Hash() in MarshalJSON
 	BlobGasUsed   *hexutil.Uint64
 	ExcessBlobGas *hexutil.Uint64
+	AggregatedSig []byte
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
@@ -304,6 +308,10 @@ func CopyHeader(h *Header) *Header {
 		cpy.ParentBeaconRoot = new(common.Hash)
 		*cpy.ParentBeaconRoot = *h.ParentBeaconRoot
 	}
+	if h.AggregatedSig != nil {
+		cpy.AggregatedSig = make([]byte, len(h.AggregatedSig))
+		copy(cpy.AggregatedSig, h.AggregatedSig)
+	}
 	return &cpy
 }
 
@@ -401,6 +409,15 @@ func (b *Block) BlobGasUsed() *uint64 {
 		*blobGasUsed = *b.header.BlobGasUsed
 	}
 	return blobGasUsed
+}
+
+func (b *Block) AggregatedSig() []byte {
+	var aggregatedSig []byte
+	if b.header.AggregatedSig != nil {
+		aggregatedSig = make([]byte, len(b.header.AggregatedSig))
+		copy(aggregatedSig, b.header.AggregatedSig)
+	}
+	return aggregatedSig
 }
 
 // Size returns the true RLP encoded storage size of the block, either by encoding
