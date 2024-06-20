@@ -74,7 +74,7 @@ func TestBlockEncoding(t *testing.T) {
 func TestEIP7591BlockEncoding(t *testing.T) {
 	// Fields to build block
 	var (
-		txs      = make([]*Transaction, 1)
+		txs      = make([]*Transaction, 2)
 		receipts = make([]*Receipt, len(txs))
 		uncles   = make([]*Header, 0)
 	)
@@ -121,7 +121,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 			{0},
 		},
 	}}
-	txdata := &BLSTx{
+	txdata1 := &BLSTx{
 		ChainID:    uint256.NewInt(1),
 		Nonce:      0,
 		GasTipCap:  uint256.NewInt(0),
@@ -135,10 +135,30 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		Signature:  bls.SignatureToBytes(sig),
 	}
 
+	// Create non-BLS tx
+	txdata2 := &DynamicFeeTx{
+		ChainID:    big.NewInt(1),
+		Nonce:      0,
+		To:         &to,
+		Gas:        123457,
+		GasFeeCap:  big.NewInt(22),
+		GasTipCap:  big.NewInt(0),
+		AccessList: accesses,
+		Data:       []byte{},
+	}
+
 	// Create transaction and block
-	tx := NewTx(txdata)
-	txs[0] = tx
-	receipts[0] = NewReceipt(make([]byte, 32), false, tx.Gas())
+	tx1 := NewTx(txdata1)
+	tx2 := NewTx(txdata2)
+	tx2, err = tx2.WithSignature(LatestSignerForChainID(big.NewInt(1)), common.Hex2Bytes("fe38ca4e44a30002ac54af7cf922a6ac2ba11b7d22f548e8ecb3f51f41cb31b06de6a5cbae13c0c856e33acf021b51819636cfc009d39eafb9f606d546e305a800"))
+	if err != nil {
+		t.Fatal("invalid signature error: ", err)
+	}
+
+	txs[0] = tx1
+	txs[1] = tx2
+	receipts[0] = NewReceipt(make([]byte, 32), false, tx1.Gas())
+	receipts[1] = NewReceipt(make([]byte, 32), false, tx2.Gas())
 	block := NewBlock(header, txs, uncles, receipts, blocktest.NewHasher())
 
 	// Regenerate the RLP
@@ -160,8 +180,11 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 	check("Time", blsBlock.Time(), uint64(9876543))
 	check("Size", blsBlock.Size(), uint64(len(blsBlockEnc)))
 	check("Aggregated Signature", blsBlock.AggregatedSig(), bls.SignatureToBytes(sig))
-	check("len(Transactions)", len(blsBlock.Transactions()), 1)
-	check("Transactions[0].Hash", blsBlock.Transactions()[0].Hash(), tx.Hash())
+	check("len(Transactions)", len(blsBlock.Transactions()), 2)
+	check("Transactions[0].Hash", blsBlock.Transactions()[0].Hash(), tx1.Hash())
+	check("Transactions[0].Type", blsBlock.Transactions()[0].Type(), tx1.Type())
+	check("Transactions[1].Hash", blsBlock.Transactions()[1].Hash(), tx2.Hash())
+	check("Transactions[1].Type", blsBlock.Transactions()[1].Type(), tx2.Type())
 }
 
 func TestEIP1559BlockEncoding(t *testing.T) {
