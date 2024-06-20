@@ -70,7 +70,7 @@ func TestBlockEncoding(t *testing.T) {
 	}
 }
 
-// Test BLS transaction type block encoding.
+// Test BLS transaction type block encoding/decoding.
 func TestEIP7591BlockEncoding(t *testing.T) {
 	// Fields to build block
 	var (
@@ -91,7 +91,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		}
 	}
 
-	// Edit the header fields to include BLS AggregatedSig field
+	// Sign and aggregate a BLS signature
 	msg := make([]byte, 50)
 	sig := bls.Sign(k.sk, msg)
 	aggSig, err := bls.AggregateSignatures([]*bls.Signature{sig})
@@ -100,6 +100,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 	}
 	check("Aggregated Signature", sig, aggSig)
 
+	// Edit the header fields to include BLS AggregatedSig field
 	header := &Header{
 		Difficulty:       big.NewInt(285311670611),
 		Number:           math.BigPow(2, 9),
@@ -147,7 +148,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		Data:       []byte{},
 	}
 
-	// Create transaction and block
+	// Create transactions
 	tx1 := NewTx(txdata1)
 	tx2 := NewTx(txdata2)
 	tx2, err = tx2.WithSignature(LatestSignerForChainID(big.NewInt(1)), common.Hex2Bytes("fe38ca4e44a30002ac54af7cf922a6ac2ba11b7d22f548e8ecb3f51f41cb31b06de6a5cbae13c0c856e33acf021b51819636cfc009d39eafb9f606d546e305a800"))
@@ -155,6 +156,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		t.Fatal("invalid signature error: ", err)
 	}
 
+	// Create block
 	txs[0] = tx1
 	txs[1] = tx2
 	receipts[0] = NewReceipt(make([]byte, 32), false, tx1.Gas())
@@ -173,6 +175,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		t.Fatal("decode error: ", err)
 	}
 
+	// Assertion checks
 	check("Difficulty", blsBlock.Difficulty(), big.NewInt(285311670611))
 	check("GasLimit", blsBlock.GasLimit(), uint64(12345678))
 	check("GasUsed", blsBlock.GasUsed(), uint64(1476322))
