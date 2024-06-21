@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,8 +25,6 @@ func createEmptyBLSTx(sk *bls.SecretKey) (*Transaction, error) {
 
 // Create the BLS txData.
 func createEmptyBLSTxInner(nonce uint64, sk *bls.SecretKey) *BLSTx {
-	msg := make([]byte, 50)
-	sig := bls.SignatureToBytes(bls.Sign(sk, msg))
 	return &BLSTx{
 		ChainID:   uint256.NewInt(1),
 		Nonce:     nonce,
@@ -34,24 +33,33 @@ func createEmptyBLSTxInner(nonce uint64, sk *bls.SecretKey) *BLSTx {
 		Gas:       25000,
 		To:        common.Address{0x03, 0x04, 0x05},
 		Value:     uint256.NewInt(99),
-		Data:      msg,
+		Data:      make([]byte, 50),
 		PublicKey: bls.PublicFromSecretKey(sk),
-		Signature: sig,
 	}
 }
 
 // Test to see if BLS signer works.
 func TestBLSTxSigning(t *testing.T) {
+	// Mimic wallet level
 	k, err := crypto.GenerateBLSKey()
 	if err != nil {
 		t.Fatal("error creating keys:", err)
 	}
+
+	// Construct tx
 	tx, err := createEmptyBLSTx(k)
 	if err != nil {
 		t.Fatal("error creating empty BLSTx:", err)
 	}
 	hash := tx.Hash()
+
+	// Mimic wallet signing
+	sig := bls.SignatureToBytes(bls.Sign(k, hash.Bytes()))
+	tx.SetSignature(sig)
 	t.Log("tx hash:", hash)
+	if bytes.Equal(tx.Signature(), sig) {
+		t.Fatal("BLS signature not the same")
+	}
 }
 
 // Test BLS transaction size after marshal/unmarshal.
