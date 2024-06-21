@@ -80,7 +80,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 	)
 
 	// Generate BLS key
-	k, err := newKey()
+	k, err := crypto.GenerateBLSKey()
 	if err != nil {
 		t.Fatal("failed to generate BLS keys:", err)
 	}
@@ -93,7 +93,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 
 	// Sign and aggregate a BLS signature
 	msg := make([]byte, 50)
-	sig := bls.Sign(k.sk, msg)
+	sig := bls.Sign(k, msg)
 	aggSig, err := bls.AggregateSignatures([]*bls.Signature{sig})
 	if err != nil {
 		t.Fatal("failed to aggregate BLS signatures:", err)
@@ -132,7 +132,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		Value:      uint256.NewInt(99),
 		Data:       msg,
 		AccessList: accesses,
-		PublicKey:  k.pk,
+		PublicKey:  bls.PublicFromSecretKey(k),
 		Signature:  bls.SignatureToBytes(sig),
 	}
 
