@@ -29,8 +29,9 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/holiman/uint256"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
 )
 
 // from bcValidBlockTest.json, "SimpleTx"
@@ -93,11 +94,8 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 
 	// Sign and aggregate a BLS signature
 	msg := make([]byte, 50)
-	sig := bls.Sign(k, msg)
-	aggSig, err := bls.AggregateSignatures([]*bls.Signature{sig})
-	if err != nil {
-		t.Fatal("failed to aggregate BLS signatures:", err)
-	}
+	sig := k.Sign(msg)
+	aggSig := blst.AggregateSignatures([]bls.Signature{sig})
 	check("Aggregated Signature", sig, aggSig)
 
 	// Edit the header fields to include BLS AggregatedSig field
@@ -110,7 +108,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		Extra:            []byte("coolest block on chain"),
 		WithdrawalsHash:  &EmptyWithdrawalsHash,
 		ParentBeaconRoot: new(common.Hash),
-		AggregatedSig:    bls.SignatureToBytes(aggSig),
+		AggregatedSig:    aggSig.Marshal(),
 	}
 
 	// Create BLS tx inner & signature
@@ -132,8 +130,8 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		Value:      uint256.NewInt(99),
 		Data:       msg,
 		AccessList: accesses,
-		PublicKey:  bls.PublicFromSecretKey(k),
-		Signature:  bls.SignatureToBytes(sig),
+		PublicKey:  k.PublicKey().Marshal(),
+		Signature:  sig.Marshal(),
 	}
 
 	// Create non-BLS tx
@@ -182,7 +180,7 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 	check("Nonce", blsBlock.Nonce(), uint64(0))
 	check("Time", blsBlock.Time(), uint64(9876543))
 	check("Size", blsBlock.Size(), uint64(len(blsBlockEnc)))
-	check("Aggregated Signature", blsBlock.AggregatedSig(), bls.SignatureToBytes(sig))
+	check("Aggregated Signature", blsBlock.AggregatedSig(), sig.Marshal())
 	check("len(Transactions)", len(blsBlock.Transactions()), 2)
 	check("Transactions[0].Hash", blsBlock.Transactions()[0].Hash(), tx1.Hash())
 	check("Transactions[0].Type", blsBlock.Transactions()[0].Type(), tx1.Type())
