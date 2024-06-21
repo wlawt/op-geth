@@ -553,6 +553,11 @@ func (tx *Transaction) SetSignature(sig []byte) {
 	if blstx, ok := tx.inner.(*BLSTx); ok {
 		blstx.setSignature(sig)
 	}
+	cpy := &Transaction{
+		inner: blstx.withoutSignature(),
+		time:  tx.time,
+	}
+	return cpy
 }
 
 // SetTime sets the decoding time of a transaction. This is used by tests to set
