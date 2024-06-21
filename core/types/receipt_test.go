@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/holiman/uint256"
@@ -157,7 +158,7 @@ var (
 		Type: DepositTxType,
 	}
 
-	k, _ = newKey()
+	k, _ = crypto.GenerateBLSKey()
 
 	// Create a few transactions to have receipts for
 	to2 = common.HexToAddress("0x2")
@@ -225,7 +226,7 @@ var (
 			BlobFeeCap: uint256.NewInt(100077),
 			BlobHashes: []common.Hash{{}, {}, {}},
 		}),
-		NewTx(k.createEmptyBLSTxInner(8)),
+		NewTx(createEmptyBLSTxInner(8, k)),
 		NewTx(&DepositTx{
 			To:    nil, // contract creation
 			Value: big.NewInt(6),

@@ -10,30 +10,12 @@ import (
 	"github.com/holiman/uint256"
 )
 
-// key holds the BLS PublicKey and SecretKey for helper
-// functions defined below
-type key struct {
-	pk *bls.PublicKey
-	sk *bls.SecretKey
-}
-
-// Create a new BLS public and secret key. This should
-// only be used for testing.
-func newKey() (*key, error) {
-	sk, err := bls.NewSecretKey()
-	if err != nil {
-		return nil, err
-	}
-	pk := bls.PublicFromSecretKey(sk)
-	return &key{pk, sk}, nil
-}
-
 // Creates a dummy BLS transaction.
-func (k *key) createEmptyBLSTx() (*Transaction, error) {
-	blstx := k.createEmptyBLSTxInner(5)
+func createEmptyBLSTx(sk *bls.SecretKey) (*Transaction, error) {
+	blstx := createEmptyBLSTxInner(5, sk)
 	signer := NewBLSSigner(blstx.ChainID.ToBig())
 
-	ecdsaPrivKey, err := crypto.BLSToECDSA(k.sk)
+	ecdsaPrivKey, err := crypto.BLSToECDSA(sk)
 	if err != nil {
 		return nil, err
 	}
@@ -41,9 +23,9 @@ func (k *key) createEmptyBLSTx() (*Transaction, error) {
 }
 
 // Create the BLS txData.
-func (k *key) createEmptyBLSTxInner(nonce uint64) *BLSTx {
+func createEmptyBLSTxInner(nonce uint64, sk *bls.SecretKey) *BLSTx {
 	msg := make([]byte, 50)
-	sig := bls.SignatureToBytes(bls.Sign(k.sk, msg))
+	sig := bls.SignatureToBytes(bls.Sign(sk, msg))
 	return &BLSTx{
 		ChainID:   uint256.NewInt(1),
 		Nonce:     nonce,
@@ -53,18 +35,18 @@ func (k *key) createEmptyBLSTxInner(nonce uint64) *BLSTx {
 		To:        common.Address{0x03, 0x04, 0x05},
 		Value:     uint256.NewInt(99),
 		Data:      msg,
-		PublicKey: k.pk,
+		PublicKey: bls.PublicFromSecretKey(sk),
 		Signature: sig,
 	}
 }
 
 // Test to see if BLS signer works.
 func TestBLSTxSigning(t *testing.T) {
-	k, err := newKey()
+	k, err := crypto.GenerateBLSKey()
 	if err != nil {
 		t.Fatal("error creating keys:", err)
 	}
-	tx, err := k.createEmptyBLSTx()
+	tx, err := createEmptyBLSTx(k)
 	if err != nil {
 		t.Fatal("error creating empty BLSTx:", err)
 	}
@@ -75,19 +57,19 @@ func TestBLSTxSigning(t *testing.T) {
 // Test BLS transaction size after marshal/unmarshal.
 func TestBLSTxSize(t *testing.T) {
 	// Create BLS key
-	k, err := newKey()
+	k, err := crypto.GenerateBLSKey()
 	if err != nil {
 		t.Fatal("error creating keys:", err)
 	}
 
 	// Setup ECDSA signer
-	ecdsaPrivKey, err := crypto.BLSToECDSA(k.sk)
+	ecdsaPrivKey, err := crypto.BLSToECDSA(k)
 	if err != nil {
 		t.Fatal("error converting BLS to ECDSA private key:", err)
 	}
 
 	// Build and sign transaction
-	txdata := k.createEmptyBLSTxInner(5)
+	txdata := createEmptyBLSTxInner(5, k)
 	signer := NewBLSSigner(txdata.ChainID.ToBig())
 	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
 	if err != nil {
@@ -115,17 +97,17 @@ func TestBLSTxSize(t *testing.T) {
 
 // Test BLS encoding/decoding for RLP and JSON.
 func TestBLSTxCoding(t *testing.T) {
-	k, err := newKey()
+	k, err := crypto.GenerateBLSKey()
 	if err != nil {
 		t.Fatal("error creating keys:", err)
 	}
 
-	ecdsaPrivKey, err := crypto.BLSToECDSA(k.sk)
+	ecdsaPrivKey, err := crypto.BLSToECDSA(k)
 	if err != nil {
 		t.Fatal("error converting BLS to ECDSA private key:", err)
 	}
 
-	txdata := k.createEmptyBLSTxInner(5)
+	txdata := createEmptyBLSTxInner(5, k)
 	signer := NewBLSSigner(txdata.ChainID.ToBig())
 	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
 	if err != nil {

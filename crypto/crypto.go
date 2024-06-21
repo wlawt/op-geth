@@ -104,6 +104,16 @@ func Keccak512(data ...[]byte) []byte {
 	return d.Sum(nil)
 }
 
+// Create a new BLS public and secret key. This should
+// only be used for testing.
+func GenerateBLSKey() (*bls.SecretKey, error) {
+	sk, err := bls.NewSecretKey()
+	if err != nil {
+		return nil, err
+	}
+	return sk, nil
+}
+
 // Both the BLS and ECDSA private key uses random 32 bytes. Therefore, we can
 // have these 32 bytes represent 2 different account types (BLS and ECDSA).
 //
