@@ -31,7 +31,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/holiman/uint256"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 // Proof-of-stake protocol constants.
@@ -220,7 +219,7 @@ func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 	return abort, results
 }
 
-func (beacon *Beacon) VerifyAggregate(senders []*bls.PublicKey, txHashes []common.Hash, aggregatedSig []byte) error {
+/*func (beacon *Beacon) VerifyAggregate(senders []*bls.PublicKey, txHashes []common.Hash, aggregatedSig []byte) error {
 	aggPK, err := bls.AggregatePublicKeys(senders)
 	if err != nil {
 		return err
@@ -230,7 +229,7 @@ func (beacon *Beacon) VerifyAggregate(senders []*bls.PublicKey, txHashes []commo
 		return err
 	}
 	valid := bls.Verify(aggPK, aggSig, )
-}
+}*/
 
 // VerifyUncles verifies that the given block's uncles conform to the consensus
 // rules of the Ethereum consensus engine.
@@ -318,12 +317,13 @@ func (beacon *Beacon) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 			return err
 		}
 	}
-	// Verify BLS aggregate signatures if any
+
+	/*// Verify BLS aggregate signatures if any
 	var (
 		sender []*bls.PublicKey
 		txHash []common.Hash
-	)
-	
+	)*/
+
 	return nil
 }
 

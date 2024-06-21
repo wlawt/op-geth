@@ -51,8 +51,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/mattn/go-colorable"
-
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 var (
@@ -1567,12 +1565,12 @@ func TestBlockToPayloadWithBLS(t *testing.T) {
 
 	// Create BLS transaction
 	inner := &types.BLSTx{
-		PublicKey: bls.PublicFromSecretKey(k),
+		PublicKey: k.PublicKey().Marshal(),
 	}
 	tx := types.NewTx(inner)
 
 	// Mimic wallet signing
-	sig := bls.SignatureToBytes(bls.Sign(k, tx.Hash().Bytes()))
+	sig := k.Sign(tx.Hash().Bytes()).Marshal()
 	tx.SetSignature(sig)
 
 	// Create ExecutableData
