@@ -237,7 +237,7 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 
 		// Collect Signatures
 		var signatures []*bls.Signature
-		for i, tx := range txs {
+		for _, tx := range txs {
 			if tx.Type() == BLSTxType {
 				sig, err := bls.SignatureFromBytes(tx.Signature())
 				if err != nil {
@@ -245,7 +245,7 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 				}
 				signatures = append(signatures, sig)
 				// All transactions in the block will be added without the signature field set
-				txs[i] = tx.WithoutSignature()
+				tx.SetSignature(nil)
 			}
 		}
 		copy(b.transactions, txs)

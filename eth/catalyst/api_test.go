@@ -1565,21 +1565,18 @@ func TestBlockToPayloadWithBLS(t *testing.T) {
 		t.Fatal("failed to generate BLS keys:", err)
 	}
 
-	// Sign and aggregate a BLS signature
-	msg := make([]byte, 50)
-	sig := bls.Sign(k, msg)
-	if err != nil {
-		t.Fatal("failed to aggregate BLS signatures:", err)
-	}
-
 	// Create BLS transaction
 	inner := &types.BLSTx{
 		PublicKey: bls.PublicFromSecretKey(k),
-		Signature: bls.SignatureToBytes(sig),
 	}
+	tx := types.NewTx(inner)
+
+	// Mimic wallet signing
+	sig := bls.SignatureToBytes(bls.Sign(k, tx.Hash().Bytes()))
+	tx.SetSignature(sig)
 
 	// Create ExecutableData
-	txs = append(txs, types.NewTx(inner))
+	txs = append(txs, tx)
 	block := types.NewBlock(&header, txs, nil, nil, trie.NewStackTrie(nil))
 	envelope := engine.BlockToExecutableData(block, nil, nil)
 
