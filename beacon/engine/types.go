@@ -243,7 +243,7 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 	}
 	// Blocks with transactions containing the signature field MUST be rejected
 	for i, tx := range txs {
-		if tx.Signature() != nil {
+		if tx.Type() == types.BLSTxType && len(tx.Signature()) != 0 {
 			return nil, fmt.Errorf("transaction %v has signature field still set", i)
 		}
 	}

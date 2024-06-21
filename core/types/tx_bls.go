@@ -101,8 +101,10 @@ func (tx *BLSTx) effectiveGasPrice(dst *big.Int, baseFee *big.Int) *big.Int {
 }
 
 // Sets BLS signature
-func (tx *BLSTx) setSignature(sig []byte) {
-	copy(tx.Signature, sig)
+func (tx *BLSTx) withoutSignature() *BLSTx {
+	cpy := *tx
+	cpy.Signature = nil
+	return &cpy
 }
 
 // This is a no-op as we use BLS Signatures over ECDSA Signatures.

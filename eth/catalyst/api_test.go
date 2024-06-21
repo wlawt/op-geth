@@ -51,6 +51,8 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/mattn/go-colorable"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 var (
@@ -1562,22 +1564,33 @@ func TestBlockToPayloadWithBLS(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to generate BLS keys:", err)
 	}
-	
+
 	// Sign and aggregate a BLS signature
 	msg := make([]byte, 50)
 	sig := bls.Sign(k, msg)
 	if err != nil {
 		t.Fatal("failed to aggregate BLS signatures:", err)
 	}
-	
+
+	// Create BLS transaction
 	inner := &types.BLSTx{
 		PublicKey: bls.PublicFromSecretKey(k),
-		Signature: bls.SignatureToBytes(sig)
+		Signature: bls.SignatureToBytes(sig),
 	}
 
+	// Create ExecutableData
 	txs = append(txs, types.NewTx(inner))
 	block := types.NewBlock(&header, txs, nil, nil, trie.NewStackTrie(nil))
-	_ = engine.BlockToExecutableData(block, nil, nil)
+	envelope := engine.BlockToExecutableData(block, nil, nil)
+
+	// Convert Payload to Block
+	//
+	// This function will check if BLS transactions have the signature field
+	// set. If so, it will reject the block and there should be an error.
+	_, err = engine.ExecutableDataToBlock(*envelope.ExecutionPayload, nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestBlockToPayloadWithBlobs(t *testing.T) {
