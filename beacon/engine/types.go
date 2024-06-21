@@ -85,6 +85,7 @@ type ExecutableData struct {
 	Withdrawals   []*types.Withdrawal `json:"withdrawals"`
 	BlobGasUsed   *uint64             `json:"blobGasUsed"`
 	ExcessBlobGas *uint64             `json:"excessBlobGas"`
+	AggregatedSig []byte              `json:"aggregatedSig"`
 }
 
 // JSON type overrides for executableData.
@@ -208,6 +209,7 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 //		uncleHash = emptyUncleHash
 //		difficulty = 0
 //	 	if versionedHashes != nil, versionedHashes match to blob transactions
+//		no transactions should have [signature] set after being added to the block
 //
 // and that the blockhash of the constructed block matches the parameters. Nil
 // Withdrawals value will propagate through the returned block. Empty
@@ -239,6 +241,12 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 			return nil, fmt.Errorf("invalid versionedHash at %v: %v blobHashes: %v", i, versionedHashes, blobHashes)
 		}
 	}
+	// Blocks with transactions containing the signature field MUST be rejected
+	for i, tx := range txs {
+		if tx.Signature() != nil {
+			return nil, fmt.Errorf("transaction %v has signature field still set", i)
+		}
+	}
 	// Only set withdrawalsRoot if it is non-nil. This allows CLs to use
 	// ExecutableData before withdrawals are enabled by marshaling
 	// Withdrawals as the json null value.
@@ -267,6 +275,7 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 		ExcessBlobGas:    params.ExcessBlobGas,
 		BlobGasUsed:      params.BlobGasUsed,
 		ParentBeaconRoot: beaconRoot,
+		AggregatedSig:    params.AggregatedSig,
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */).WithWithdrawals(params.Withdrawals)
 	if block.Hash() != params.BlockHash {
@@ -296,6 +305,7 @@ func BlockToExecutableData(block *types.Block, fees *big.Int, sidecars []*types.
 		Withdrawals:   block.Withdrawals(),
 		BlobGasUsed:   block.BlobGasUsed(),
 		ExcessBlobGas: block.ExcessBlobGas(),
+		AggregatedSig: block.AggregatedSig(),
 	}
 	bundle := BlobsBundleV1{
 		Commitments: make([]hexutil.Bytes, 0),
