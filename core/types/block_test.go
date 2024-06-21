@@ -108,7 +108,6 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		Extra:            []byte("coolest block on chain"),
 		WithdrawalsHash:  &EmptyWithdrawalsHash,
 		ParentBeaconRoot: new(common.Hash),
-		AggregatedSig:    aggSig.Marshal(),
 	}
 
 	// Create BLS tx inner & signature

@@ -29,6 +29,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 // A BlockNonce is a 64-bit hash which proves (combined with the
@@ -233,7 +235,32 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 	} else {
 		b.header.TxHash = DeriveSha(Transactions(txs), hasher)
 		b.transactions = make(Transactions, len(txs))
+
+		// Collect Signatures
+		var signatures []*bls.Signature
+		for _, tx := range txs {
+			if tx.Type() == BLSTxType {
+				sig, err := bls.SignatureFromBytes(tx.Signature())
+				if err != nil {
+					panic("could not convert bytes to BLS Signature")
+				}
+				signatures = append(signatures, sig)
+				// All transactions in the block will be added without the signature field set
+				tx.SetSignature(nil)
+			}
+		}
 		copy(b.transactions, txs)
+
+		// Aggregate BLS Signatures
+		var aggregatedSig []byte
+		if signatures != nil {
+			aggSig, err := bls.AggregateSignatures(signatures)
+			if err != nil {
+				panic("could not aggregate BLS signatures")
+			}
+			aggregatedSig = bls.SignatureToBytes(aggSig)
+		}
+		b.header.AggregatedSig = aggregatedSig
 	}
 
 	if len(receipts) == 0 {

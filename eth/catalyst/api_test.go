@@ -1553,6 +1553,33 @@ func equalBody(a *types.Body, b *engine.ExecutionPayloadBodyV1) bool {
 	return reflect.DeepEqual(a.Withdrawals, b.Withdrawals)
 }
 
+func TestBlockToPayloadWithBLS(t *testing.T) {
+	header := types.Header{}
+	var txs []*types.Transaction
+
+	// Generate BLS key
+	k, err := crypto.GenerateBLSKey()
+	if err != nil {
+		t.Fatal("failed to generate BLS keys:", err)
+	}
+	
+	// Sign and aggregate a BLS signature
+	msg := make([]byte, 50)
+	sig := bls.Sign(k, msg)
+	if err != nil {
+		t.Fatal("failed to aggregate BLS signatures:", err)
+	}
+	
+	inner := &types.BLSTx{
+		PublicKey: bls.PublicFromSecretKey(k),
+		Signature: bls.SignatureToBytes(sig)
+	}
+
+	txs = append(txs, types.NewTx(inner))
+	block := types.NewBlock(&header, txs, nil, nil, trie.NewStackTrie(nil))
+	_ = engine.BlockToExecutableData(block, nil, nil)
+}
+
 func TestBlockToPayloadWithBlobs(t *testing.T) {
 	header := types.Header{}
 	var txs []*types.Transaction
