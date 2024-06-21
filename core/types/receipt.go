@@ -29,8 +29,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 //go:generate go run github.com/fjl/gencodec -type Receipt -field-override receiptMarshaling -out gen_receipt_json.go
@@ -71,7 +69,7 @@ type Receipt struct {
 	EffectiveGasPrice *big.Int       `json:"effectiveGasPrice"` // required, but tag omitted for backwards compatibility
 	BlobGasUsed       uint64         `json:"blobGasUsed,omitempty"`
 	BlobGasPrice      *big.Int       `json:"blobGasPrice,omitempty"`
-	PublicKey         *bls.PublicKey `json:"publicKey,omitempty"`
+	PublicKey         []byte         `json:"publicKey,omitempty"`
 	Signature         []byte         `json:"signature,omitempty"`
 
 	// DepositNonce was introduced in Regolith to store the actual nonce used by deposit transactions

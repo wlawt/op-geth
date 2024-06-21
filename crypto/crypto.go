@@ -29,10 +29,10 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -106,8 +106,8 @@ func Keccak512(data ...[]byte) []byte {
 
 // Create a new BLS public and secret key. This should
 // only be used for testing.
-func GenerateBLSKey() (*bls.SecretKey, error) {
-	sk, err := bls.NewSecretKey()
+func GenerateBLSKey() (bls.SecretKey, error) {
+	sk, err := bls.RandKey()
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +119,8 @@ func GenerateBLSKey() (*bls.SecretKey, error) {
 //
 // Dealing with private keys should be abstracted on the wallet level. This
 // is mainly used for testing.
-func BLSToECDSA(privKey *bls.SecretKey) (*ecdsa.PrivateKey, error) {
-	privBytes := bls.SecretKeyToBytes(privKey)
+func BLSToECDSA(privKey bls.SecretKey) (*ecdsa.PrivateKey, error) {
+	privBytes := privKey.Marshal()
 	ecdsaPrivKey, err := ToECDSA(privBytes)
 	if err != nil {
 		return nil, err
@@ -129,8 +129,8 @@ func BLSToECDSA(privKey *bls.SecretKey) (*ecdsa.PrivateKey, error) {
 }
 
 // Convert a BLS Public Key (48 bytes) into an [Address]
-func BLSToAddress(pk *bls.PublicKey) (common.Address, error) {
-	pkBytes := Keccak256(bls.PublicKeyToCompressedBytes(pk))
+func BLSToAddress(pk []byte) (common.Address, error) {
+	pkBytes := Keccak256(pk)
 	return common.BytesToAddress(pkBytes[12:]), nil
 }
 
