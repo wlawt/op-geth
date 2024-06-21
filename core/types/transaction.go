@@ -550,6 +550,13 @@ func (tx *Transaction) Signature() []byte {
 	return nil
 }
 
+// SetSignature updates the signature with the provided bytes.
+func (tx *Transaction) SetSignature(sig []byte) {
+	if blstx, ok := tx.inner.(*BLSTx); ok {
+		blstx.setSignature(sig)
+	}
+}
+
 // SetTime sets the decoding time of a transaction. This is used by tests to set
 // arbitrary times and by persistent transaction pools when loading old txs from
 // disk.
