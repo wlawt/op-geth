@@ -27,8 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/holiman/uint256"
-
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 // txJSON is the JSON representation of transactions.
@@ -64,8 +62,8 @@ type txJSON struct {
 	Proofs      []kzg4844.Proof      `json:"proofs,omitempty"`
 
 	// BLS transaction fields
-	PublicKey *bls.PublicKey `json:"publicKey,omitempty"`
-	Signature []byte         `json:"signature,omitempty"`
+	PublicKey []byte `json:"publicKey,omitempty"`
+	Signature []byte `json:"signature,omitempty"`
 
 	// Only used for encoding:
 	Hash common.Hash `json:"hash"`

@@ -30,8 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
 var (
@@ -534,8 +532,8 @@ func (tx *Transaction) WithoutBlobTxSidecar() *Transaction {
 	return cpy
 }
 
-// PublicKey returns the BLS Public Key of a transaction.
-func (tx *Transaction) PublicKey() *bls.PublicKey {
+// PublicKey returns the BLS Public Key of a transaction in little-endian format.
+func (tx *Transaction) PublicKey() []byte {
 	if blstx, ok := tx.inner.(*BLSTx); ok {
 		return blstx.publicKey()
 	}

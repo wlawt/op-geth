@@ -7,12 +7,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/holiman/uint256"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
 )
 
 // Creates a dummy BLS transaction.
-func createEmptyBLSTx(sk *bls.SecretKey) (*Transaction, error) {
+func createEmptyBLSTx(sk bls.SecretKey) (*Transaction, error) {
 	blstx := createEmptyBLSTxInner(5, sk)
 	signer := NewBLSSigner(blstx.ChainID.ToBig())
 
@@ -24,7 +24,7 @@ func createEmptyBLSTx(sk *bls.SecretKey) (*Transaction, error) {
 }
 
 // Create the BLS txData.
-func createEmptyBLSTxInner(nonce uint64, sk *bls.SecretKey) *BLSTx {
+func createEmptyBLSTxInner(nonce uint64, sk bls.SecretKey) *BLSTx {
 	return &BLSTx{
 		ChainID:   uint256.NewInt(1),
 		Nonce:     nonce,
@@ -34,7 +34,7 @@ func createEmptyBLSTxInner(nonce uint64, sk *bls.SecretKey) *BLSTx {
 		To:        common.Address{0x03, 0x04, 0x05},
 		Value:     uint256.NewInt(99),
 		Data:      make([]byte, 50),
-		PublicKey: bls.PublicFromSecretKey(sk),
+		PublicKey: sk.PublicKey().Marshal(),
 	}
 }
 
@@ -54,7 +54,7 @@ func TestBLSTxSigning(t *testing.T) {
 	hash := tx.Hash()
 
 	// Mimic wallet signing
-	sig := bls.SignatureToBytes(bls.Sign(k, hash.Bytes()))
+	sig := k.Sign(hash.Bytes()).Marshal()
 	tx.SetSignature(sig)
 	t.Log("tx hash:", hash)
 	if bytes.Equal(tx.Signature(), sig) {
