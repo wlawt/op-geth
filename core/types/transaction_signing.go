@@ -228,7 +228,6 @@ func (b blsSigner) Hash(tx *Transaction) common.Hash {
 			tx.Data(),
 			tx.AccessList(),
 			tx.PublicKey(),
-			tx.Signature(),
 		})
 }
 
