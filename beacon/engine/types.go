@@ -24,6 +24,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
+
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
 )
 
 // PayloadVersion denotes the version of PayloadAttributes used to request the
@@ -200,6 +203,48 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 		txs[i] = &tx
 	}
 	return txs, nil
+}
+
+func VerifyAggregate(block *types.Block) error {
+	var (
+		publicKeys    []bls.PublicKey
+		txHashesBytes [][32]byte
+	)
+	for _, tx := range block.Transactions() {
+		if tx.Type() == types.BLSTxType {
+			// Get BLS representation of the Public Key
+			pk, err := blst.PublicKeyFromBytes(tx.PublicKey())
+			if err != nil {
+				return err
+			}
+			publicKeys = append(publicKeys, pk)
+			// Get byte representation of the txHashes
+			var data [32]byte
+			copy(data[:], tx.Hash().Bytes())
+			txHashesBytes = append(txHashesBytes, data)
+		}
+	}
+	if len(publicKeys) == 0 {
+		return nil
+	}
+
+	bAggSig := block.AggregatedSig()
+	if len(bAggSig) == 0 {
+		// No BLS Transactions
+		return nil
+	}
+	// Get BLS Signature representation of the AggregatedSig
+	aggSig, err := blst.SignatureFromBytes(bAggSig)
+	if err != nil {
+		return err
+	}
+
+	// Verify aggregatedSig
+	valid := aggSig.AggregateVerify(publicKeys, txHashesBytes)
+	if !valid {
+		return InvalidAggSig
+	}
+	return nil
 }
 
 // ExecutableDataToBlock constructs a block from executable data.

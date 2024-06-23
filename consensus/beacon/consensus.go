@@ -219,18 +219,6 @@ func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 	return abort, results
 }
 
-/*func (beacon *Beacon) VerifyAggregate(senders []*bls.PublicKey, txHashes []common.Hash, aggregatedSig []byte) error {
-	aggPK, err := bls.AggregatePublicKeys(senders)
-	if err != nil {
-		return err
-	}
-	aggSig, err := bls.SignatureFromBytes(aggregatedSig)
-	if err != nil {
-		return err
-	}
-	valid := bls.Verify(aggPK, aggSig, )
-}*/
-
 // VerifyUncles verifies that the given block's uncles conform to the consensus
 // rules of the Ethereum consensus engine.
 func (beacon *Beacon) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
@@ -317,13 +305,6 @@ func (beacon *Beacon) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 			return err
 		}
 	}
-
-	/*// Verify BLS aggregate signatures if any
-	var (
-		sender []*bls.PublicKey
-		txHash []common.Hash
-	)*/
-
 	return nil
 }
 
