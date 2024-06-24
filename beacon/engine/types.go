@@ -211,6 +211,7 @@ func VerifyAggregate(block *types.Block) error {
 		txHashesBytes [][32]byte
 	)
 	for _, tx := range block.Transactions() {
+		// Ignore for non-BLS transactions
 		if tx.Type() == types.BLSTxType {
 			// Get BLS representation of the Public Key
 			pk, err := blst.PublicKeyFromBytes(tx.PublicKey())
@@ -224,21 +225,17 @@ func VerifyAggregate(block *types.Block) error {
 			txHashesBytes = append(txHashesBytes, data)
 		}
 	}
-	if len(publicKeys) == 0 {
+	// No need to continue if there are no BLS transactions
+	bAggSig := block.AggregatedSig()
+	if len(publicKeys) == 0 || len(bAggSig) == 0 {
 		return nil
 	}
 
-	bAggSig := block.AggregatedSig()
-	if len(bAggSig) == 0 {
-		// No BLS Transactions
-		return nil
-	}
 	// Get BLS Signature representation of the AggregatedSig
 	aggSig, err := blst.SignatureFromBytes(bAggSig)
 	if err != nil {
 		return err
 	}
-
 	// Verify aggregatedSig
 	valid := aggSig.AggregateVerify(publicKeys, txHashesBytes)
 	if !valid {
