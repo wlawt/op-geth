@@ -227,7 +227,7 @@ func VerifyAggregate(block *types.Block) error {
 	}
 	// No need to continue if there are no BLS transactions
 	bAggSig := block.AggregatedSig()
-	if len(publicKeys) == 0 || len(bAggSig) == 0 {
+	if len(publicKeys) == 0 && len(bAggSig) == 0 {
 		return nil
 	}
 
@@ -251,7 +251,7 @@ func VerifyAggregate(block *types.Block) error {
 //		uncleHash = emptyUncleHash
 //		difficulty = 0
 //	 	if versionedHashes != nil, versionedHashes match to blob transactions
-//		no transactions should have [signature] set after being added to the block
+//		no BLS transactions should have [signature] set after being added to the block
 //
 // and that the blockhash of the constructed block matches the parameters. Nil
 // Withdrawals value will propagate through the returned block. Empty
