@@ -1609,7 +1609,8 @@ func TestBLSBlockToPayloadWithVerifyBad(t *testing.T) {
 	}
 	tx := types.NewTx(inner)
 
-	// Mimic wallet signing
+	// Mimic wallet signing, but don't sign the txHash,
+	// sign something else
 	fakeData := make([]byte, 50)
 	fakeSig := k.Sign(fakeData).Marshal()
 	tx.SetSignature(fakeSig)
