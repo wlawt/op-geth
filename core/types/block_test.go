@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/holiman/uint256"
+	"github.com/stretchr/testify/require"
 )
 
 // from bcValidBlockTest.json, "SimpleTx"
@@ -180,6 +181,27 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 	check("Transactions[0].Type", blsBlock.Transactions()[0].Type(), tx1.Type())
 	check("Transactions[1].Hash", blsBlock.Transactions()[1].Hash(), tx2.Hash())
 	check("Transactions[1].Type", blsBlock.Transactions()[1].Type(), tx2.Type())
+}
+
+func TestBLSBlockWithNoSig(t *testing.T) {
+	header := Header{}
+	var txs []*Transaction
+
+	// Generate BLS key
+	k, err := crypto.GenerateBLSKey()
+	if err != nil {
+		t.Fatal("failed to generate BLS keys:", err)
+	}
+
+	// Create BLS transaction
+	inner := &BLSTx{
+		PublicKey: k.PublicKey().Marshal(),
+	}
+	tx := NewTx(inner)
+	txs = append(txs, tx)
+
+	// Since there is a BLS tx, NewBlock expects a signature
+	require.Panics(t, func() { _ = NewBlock(&header, txs, nil, nil, blocktest.NewHasher()) })
 }
 
 func TestEIP1559BlockEncoding(t *testing.T) {

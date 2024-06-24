@@ -1593,7 +1593,7 @@ func TestBLSBlockToPayloadWithVerify(t *testing.T) {
 	}
 }
 
-func TestBLSBlockToPayloadWithVerifyBad(t *testing.T) {
+func TestBLSBlockToPayloadWithVerifyFaulty(t *testing.T) {
 	header := types.Header{}
 	var txs []*types.Transaction
 
@@ -1629,7 +1629,7 @@ func TestBLSBlockToPayloadWithVerifyBad(t *testing.T) {
 		t.Error(err)
 	}
 
-	// Verify, there should be an error
+	// This should fail since we didn't sign over the txHash
 	err = engine.VerifyAggregate(block2)
 	if err == nil {
 		t.Error(err)
