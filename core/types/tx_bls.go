@@ -22,19 +22,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/holiman/uint256"
 )
 
 // BLSTx represents a transaction signed using BLS.
 type BLSTx struct {
-	ChainID    *uint256.Int
+	ChainID    *big.Int
 	Nonce      uint64
-	GasTipCap  *uint256.Int // a.k.a. maxPriorityFeePerGas
-	GasFeeCap  *uint256.Int // a.k.a. maxFeePerGas
+	GasTipCap  *big.Int // a.k.a. maxPriorityFeePerGas
+	GasFeeCap  *big.Int // a.k.a. maxFeePerGas
 	Gas        uint64
-	To         common.Address
-	Value      *uint256.Int
+	To         *common.Address `rlp:"nil"` // nil means contract creation
+	Value      *big.Int
 	Data       []byte
 	AccessList AccessList
 	PublicKey  []byte // a.k.a. Sender as specified in EIP-7591, in little-endian format
@@ -52,10 +50,10 @@ func (tx *BLSTx) copy() TxData {
 
 		// These are copied below.
 		AccessList: make(AccessList, len(tx.AccessList)),
-		Value:      new(uint256.Int),
-		ChainID:    new(uint256.Int),
-		GasTipCap:  new(uint256.Int),
-		GasFeeCap:  new(uint256.Int),
+		Value:      new(big.Int),
+		ChainID:    new(big.Int),
+		GasTipCap:  new(big.Int),
+		GasFeeCap:  new(big.Int),
 	}
 	copy(cpy.AccessList, tx.AccessList)
 	if tx.Value != nil {
@@ -75,27 +73,27 @@ func (tx *BLSTx) copy() TxData {
 
 // accessors for innerTx.
 func (tx *BLSTx) txType() byte           { return BLSTxType }
-func (tx *BLSTx) chainID() *big.Int      { return tx.ChainID.ToBig() }
+func (tx *BLSTx) chainID() *big.Int      { return tx.ChainID }
 func (tx *BLSTx) accessList() AccessList { return tx.AccessList }
 func (tx *BLSTx) data() []byte           { return tx.Data }
 func (tx *BLSTx) gas() uint64            { return tx.Gas }
-func (tx *BLSTx) gasFeeCap() *big.Int    { return tx.GasFeeCap.ToBig() }
-func (tx *BLSTx) gasTipCap() *big.Int    { return tx.GasTipCap.ToBig() }
-func (tx *BLSTx) gasPrice() *big.Int     { return tx.GasFeeCap.ToBig() }
-func (tx *BLSTx) value() *big.Int        { return tx.Value.ToBig() }
+func (tx *BLSTx) gasFeeCap() *big.Int    { return tx.GasFeeCap }
+func (tx *BLSTx) gasTipCap() *big.Int    { return tx.GasTipCap }
+func (tx *BLSTx) gasPrice() *big.Int     { return tx.GasFeeCap }
+func (tx *BLSTx) value() *big.Int        { return tx.Value }
 func (tx *BLSTx) nonce() uint64          { return tx.Nonce }
-func (tx *BLSTx) to() *common.Address    { tmp := tx.To; return &tmp }
+func (tx *BLSTx) to() *common.Address    { return tx.To }
 func (tx *BLSTx) publicKey() []byte      { return tx.PublicKey }
 func (tx *BLSTx) signature() []byte      { return tx.Signature }
 func (tx *BLSTx) isSystemTx() bool       { return false }
 
 func (tx *BLSTx) effectiveGasPrice(dst *big.Int, baseFee *big.Int) *big.Int {
 	if baseFee == nil {
-		return dst.Set(tx.GasFeeCap.ToBig())
+		return dst.Set(tx.GasFeeCap)
 	}
-	tip := dst.Sub(tx.GasFeeCap.ToBig(), baseFee)
-	if tip.Cmp(tx.GasTipCap.ToBig()) > 0 {
-		tip.Set(tx.GasTipCap.ToBig())
+	tip := dst.Sub(tx.GasFeeCap, baseFee)
+	if tip.Cmp(tx.GasTipCap) > 0 {
+		tip.Set(tx.GasTipCap)
 	}
 	return tip.Add(tip, baseFee)
 }

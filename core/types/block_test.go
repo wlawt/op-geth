@@ -29,7 +29,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 )
 
@@ -113,13 +112,13 @@ func TestEIP7591BlockEncoding(t *testing.T) {
 		},
 	}}
 	txdata1 := &BLSTx{
-		ChainID:    uint256.NewInt(1),
+		ChainID:    big.NewInt(1),
 		Nonce:      0,
-		GasTipCap:  uint256.NewInt(0),
-		GasFeeCap:  uint256.NewInt(22),
+		GasTipCap:  big.NewInt(0),
+		GasFeeCap:  big.NewInt(22),
 		Gas:        123457,
-		To:         to,
-		Value:      uint256.NewInt(99),
+		To:         &to,
+		Value:      big.NewInt(99),
 		Data:       make([]byte, 50),
 		AccessList: accesses,
 		PublicKey:  k.PublicKey().Marshal(),

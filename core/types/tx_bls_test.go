@@ -2,19 +2,19 @@ package types
 
 import (
 	"bytes"
+	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/holiman/uint256"
 	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
 )
 
 // Creates a dummy BLS transaction.
 func createEmptyBLSTx(sk bls.SecretKey) (*Transaction, error) {
 	blstx := createEmptyBLSTxInner(5, sk)
-	signer := NewBLSSigner(blstx.ChainID.ToBig())
+	signer := NewBLSSigner(blstx.ChainID)
 
 	ecdsaPrivKey, err := crypto.BLSToECDSA(sk)
 	if err != nil {
@@ -26,13 +26,13 @@ func createEmptyBLSTx(sk bls.SecretKey) (*Transaction, error) {
 // Create the BLS txData.
 func createEmptyBLSTxInner(nonce uint64, sk bls.SecretKey) *BLSTx {
 	return &BLSTx{
-		ChainID:   uint256.NewInt(1),
+		ChainID:   big.NewInt(1),
 		Nonce:     nonce,
-		GasTipCap: uint256.NewInt(22),
-		GasFeeCap: uint256.NewInt(5),
+		GasTipCap: big.NewInt(22),
+		GasFeeCap: big.NewInt(5),
 		Gas:       25000,
-		To:        common.Address{0x03, 0x04, 0x05},
-		Value:     uint256.NewInt(99),
+		To:        &common.Address{0x03, 0x04, 0x05},
+		Value:     big.NewInt(99),
 		Data:      make([]byte, 50),
 		PublicKey: sk.PublicKey().Marshal(),
 	}
@@ -78,7 +78,7 @@ func TestBLSTxSize(t *testing.T) {
 
 	// Build and sign transaction
 	txdata := createEmptyBLSTxInner(5, k)
-	signer := NewBLSSigner(txdata.ChainID.ToBig())
+	signer := NewBLSSigner(txdata.ChainID)
 	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
 	if err != nil {
 		t.Fatal("error signing tx:", err)
@@ -116,7 +116,7 @@ func TestBLSTxCoding(t *testing.T) {
 	}
 
 	txdata := createEmptyBLSTxInner(5, k)
-	signer := NewBLSSigner(txdata.ChainID.ToBig())
+	signer := NewBLSSigner(txdata.ChainID)
 	tx, err := SignNewTx(ecdsaPrivKey, signer, txdata)
 	if err != nil {
 		t.Fatal("error signing tx:", err)
