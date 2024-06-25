@@ -57,7 +57,7 @@ func TestBLSTxSigning(t *testing.T) {
 	sig := k.Sign(hash.Bytes()).Marshal()
 	tx.SetSignature(sig)
 	t.Log("tx hash:", hash)
-	if bytes.Equal(tx.Signature(), sig) {
+	if !bytes.Equal(tx.Signature(), sig) {
 		t.Fatal("BLS signature not the same")
 	}
 }

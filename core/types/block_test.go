@@ -28,6 +28,9 @@ import (
 	"github.com/ethereum/go-ethereum/internal/blocktest"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/holiman/uint256"
+	"github.com/stretchr/testify/require"
 )
 
 // from bcValidBlockTest.json, "SimpleTx"
@@ -65,6 +68,140 @@ func TestBlockEncoding(t *testing.T) {
 	if !bytes.Equal(ourBlockEnc, blockEnc) {
 		t.Errorf("encoded block mismatch:\ngot:  %x\nwant: %x", ourBlockEnc, blockEnc)
 	}
+}
+
+// Test BLS transaction type block encoding/decoding.
+func TestEIP7591BlockEncoding(t *testing.T) {
+	// Fields to build block
+	var (
+		txs      = make([]*Transaction, 2)
+		receipts = make([]*Receipt, len(txs))
+		uncles   = make([]*Header, 0)
+	)
+
+	// Generate BLS key
+	k, err := crypto.GenerateBLSKey()
+	if err != nil {
+		t.Fatal("failed to generate BLS keys:", err)
+	}
+
+	check := func(f string, got, want interface{}) {
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s mismatch: got %v, want %v", f, got, want)
+		}
+	}
+
+	// Edit the header fields to include BLS AggregatedSig field
+	header := &Header{
+		Difficulty:       big.NewInt(285311670611),
+		Number:           math.BigPow(2, 9),
+		GasLimit:         12345678,
+		GasUsed:          1476322,
+		Time:             9876543,
+		Extra:            []byte("coolest block on chain"),
+		WithdrawalsHash:  &EmptyWithdrawalsHash,
+		ParentBeaconRoot: new(common.Hash),
+	}
+
+	// Create BLS tx inner & signature
+	addr := common.HexToAddress("0x0000000000000000000000000000000000000001")
+	to := common.HexToAddress("095e7baea6a6c7c4c2dfeb977efac326af552d87")
+	accesses := AccessList{AccessTuple{
+		Address: addr,
+		StorageKeys: []common.Hash{
+			{0},
+		},
+	}}
+	txdata1 := &BLSTx{
+		ChainID:    uint256.NewInt(1),
+		Nonce:      0,
+		GasTipCap:  uint256.NewInt(0),
+		GasFeeCap:  uint256.NewInt(22),
+		Gas:        123457,
+		To:         to,
+		Value:      uint256.NewInt(99),
+		Data:       make([]byte, 50),
+		AccessList: accesses,
+		PublicKey:  k.PublicKey().Marshal(),
+	}
+
+	// Create non-BLS tx
+	txdata2 := &DynamicFeeTx{
+		ChainID:    big.NewInt(1),
+		Nonce:      0,
+		To:         &to,
+		Gas:        123457,
+		GasFeeCap:  big.NewInt(22),
+		GasTipCap:  big.NewInt(0),
+		AccessList: accesses,
+		Data:       []byte{},
+	}
+
+	// Create transactions
+	tx1 := NewTx(txdata1)
+	tx2 := NewTx(txdata2)
+	tx2, err = tx2.WithSignature(LatestSignerForChainID(big.NewInt(1)), common.Hex2Bytes("fe38ca4e44a30002ac54af7cf922a6ac2ba11b7d22f548e8ecb3f51f41cb31b06de6a5cbae13c0c856e33acf021b51819636cfc009d39eafb9f606d546e305a800"))
+	if err != nil {
+		t.Fatal("invalid signature error: ", err)
+	}
+
+	// Set signature which is based off signing the txHash
+	sig1 := k.Sign(tx1.Hash().Bytes()).Marshal()
+	tx1.SetSignature(sig1)
+
+	// Create block
+	txs[0] = tx1
+	txs[1] = tx2
+	receipts[0] = NewReceipt(make([]byte, 32), false, tx1.Gas())
+	receipts[1] = NewReceipt(make([]byte, 32), false, tx2.Gas())
+	block := NewBlock(header, txs, uncles, receipts, blocktest.NewHasher())
+
+	// Regenerate the RLP
+	blsBlockEnc, err := rlp.EncodeToBytes(&block)
+	if err != nil {
+		t.Fatal("encode error: ", err)
+	}
+
+	// Attempt to decode
+	var blsBlock Block
+	if err := rlp.DecodeBytes(blsBlockEnc, &blsBlock); err != nil {
+		t.Fatal("decode error: ", err)
+	}
+
+	// Assertion checks
+	check("Difficulty", blsBlock.Difficulty(), big.NewInt(285311670611))
+	check("GasLimit", blsBlock.GasLimit(), uint64(12345678))
+	check("GasUsed", blsBlock.GasUsed(), uint64(1476322))
+	check("Nonce", blsBlock.Nonce(), uint64(0))
+	check("Time", blsBlock.Time(), uint64(9876543))
+	check("Size", blsBlock.Size(), uint64(len(blsBlockEnc)))
+	check("len(Transactions)", len(blsBlock.Transactions()), 2)
+	check("Aggregated Signature", blsBlock.AggregatedSig(), sig1)
+	check("Transactions[0].Hash", blsBlock.Transactions()[0].Hash(), tx1.Hash())
+	check("Transactions[0].Type", blsBlock.Transactions()[0].Type(), tx1.Type())
+	check("Transactions[1].Hash", blsBlock.Transactions()[1].Hash(), tx2.Hash())
+	check("Transactions[1].Type", blsBlock.Transactions()[1].Type(), tx2.Type())
+}
+
+func TestBLSBlockWithNoSig(t *testing.T) {
+	header := Header{}
+	var txs []*Transaction
+
+	// Generate BLS key
+	k, err := crypto.GenerateBLSKey()
+	if err != nil {
+		t.Fatal("failed to generate BLS keys:", err)
+	}
+
+	// Create BLS transaction
+	inner := &BLSTx{
+		PublicKey: k.PublicKey().Marshal(),
+	}
+	tx := NewTx(inner)
+	txs = append(txs, tx)
+
+	// Since there is a BLS tx, NewBlock expects a signature
+	require.Panics(t, func() { _ = NewBlock(&header, txs, nil, nil, blocktest.NewHasher()) })
 }
 
 func TestEIP1559BlockEncoding(t *testing.T) {
