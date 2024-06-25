@@ -24,6 +24,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
+
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
 )
 
 // PayloadVersion denotes the version of PayloadAttributes used to request the
@@ -85,6 +88,7 @@ type ExecutableData struct {
 	Withdrawals   []*types.Withdrawal `json:"withdrawals"`
 	BlobGasUsed   *uint64             `json:"blobGasUsed"`
 	ExcessBlobGas *uint64             `json:"excessBlobGas"`
+	AggregatedSig []byte              `json:"aggregatedSig"`
 }
 
 // JSON type overrides for executableData.
@@ -201,6 +205,45 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 	return txs, nil
 }
 
+func VerifyAggregate(block *types.Block) error {
+	var (
+		publicKeys    []bls.PublicKey
+		txHashesBytes [][32]byte
+	)
+	for _, tx := range block.Transactions() {
+		// Ignore for non-BLS transactions
+		if tx.Type() == types.BLSTxType {
+			// Get BLS representation of the Public Key
+			pk, err := blst.PublicKeyFromBytes(tx.PublicKey())
+			if err != nil {
+				return err
+			}
+			publicKeys = append(publicKeys, pk)
+			// Get byte representation of the txHashes
+			var data [32]byte
+			copy(data[:], tx.Hash().Bytes())
+			txHashesBytes = append(txHashesBytes, data)
+		}
+	}
+	// No need to continue if there are no BLS transactions
+	bAggSig := block.AggregatedSig()
+	if len(publicKeys) == 0 && len(bAggSig) == 0 {
+		return nil
+	}
+
+	// Get BLS Signature representation of the AggregatedSig
+	aggSig, err := blst.SignatureFromBytes(bAggSig)
+	if err != nil {
+		return err
+	}
+	// Verify aggregatedSig
+	valid := aggSig.AggregateVerify(publicKeys, txHashesBytes)
+	if !valid {
+		return InvalidAggSig
+	}
+	return nil
+}
+
 // ExecutableDataToBlock constructs a block from executable data.
 // It verifies that the following fields:
 //
@@ -208,6 +251,7 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 //		uncleHash = emptyUncleHash
 //		difficulty = 0
 //	 	if versionedHashes != nil, versionedHashes match to blob transactions
+//		no BLS transactions should have [signature] set after being added to the block
 //
 // and that the blockhash of the constructed block matches the parameters. Nil
 // Withdrawals value will propagate through the returned block. Empty
@@ -239,6 +283,12 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 			return nil, fmt.Errorf("invalid versionedHash at %v: %v blobHashes: %v", i, versionedHashes, blobHashes)
 		}
 	}
+	// Blocks with transactions containing the signature field MUST be rejected
+	for i, tx := range txs {
+		if tx.Type() == types.BLSTxType && len(tx.Signature()) != 0 {
+			return nil, fmt.Errorf("transaction %v has signature field still set", i)
+		}
+	}
 	// Only set withdrawalsRoot if it is non-nil. This allows CLs to use
 	// ExecutableData before withdrawals are enabled by marshaling
 	// Withdrawals as the json null value.
@@ -267,6 +317,7 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 		ExcessBlobGas:    params.ExcessBlobGas,
 		BlobGasUsed:      params.BlobGasUsed,
 		ParentBeaconRoot: beaconRoot,
+		AggregatedSig:    params.AggregatedSig,
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */).WithWithdrawals(params.Withdrawals)
 	if block.Hash() != params.BlockHash {
@@ -296,6 +347,7 @@ func BlockToExecutableData(block *types.Block, fees *big.Int, sidecars []*types.
 		Withdrawals:   block.Withdrawals(),
 		BlobGasUsed:   block.BlobGasUsed(),
 		ExcessBlobGas: block.ExcessBlobGas(),
+		AggregatedSig: block.AggregatedSig(),
 	}
 	bundle := BlobsBundleV1{
 		Commitments: make([]hexutil.Bytes, 0),

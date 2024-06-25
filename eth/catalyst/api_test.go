@@ -1553,6 +1553,90 @@ func equalBody(a *types.Body, b *engine.ExecutionPayloadBodyV1) bool {
 	return reflect.DeepEqual(a.Withdrawals, b.Withdrawals)
 }
 
+func TestBLSBlockToPayloadWithVerify(t *testing.T) {
+	header := types.Header{}
+	var txs []*types.Transaction
+
+	// Generate BLS key
+	k, err := crypto.GenerateBLSKey()
+	if err != nil {
+		t.Fatal("failed to generate BLS keys:", err)
+	}
+
+	// Create BLS transaction
+	inner := &types.BLSTx{
+		PublicKey: k.PublicKey().Marshal(),
+	}
+	tx := types.NewTx(inner)
+
+	// Mimic wallet signing
+	sig := k.Sign(tx.Hash().Bytes()).Marshal()
+	tx.SetSignature(sig)
+
+	// Create ExecutableData
+	txs = append(txs, tx)
+	block := types.NewBlock(&header, txs, nil, nil, trie.NewStackTrie(nil))
+	envelope := engine.BlockToExecutableData(block, nil, nil)
+
+	// Convert Payload to Block
+	//
+	// This function will check if BLS transactions have the signature field
+	// set. If so, it will reject the block and there should be an error.
+	block2, err := engine.ExecutableDataToBlock(*envelope.ExecutionPayload, nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Verify
+	if err := engine.VerifyAggregate(block2); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestBLSBlockToPayloadWithVerifyFaulty(t *testing.T) {
+	header := types.Header{}
+	var txs []*types.Transaction
+
+	// Generate BLS key
+	k, err := crypto.GenerateBLSKey()
+	if err != nil {
+		t.Fatal("failed to generate BLS keys:", err)
+	}
+
+	// Create BLS transaction
+	inner := &types.BLSTx{
+		PublicKey: k.PublicKey().Marshal(),
+	}
+	tx := types.NewTx(inner)
+
+	// Mimic wallet signing, but don't sign the txHash,
+	// sign something else
+	fakeData := make([]byte, 50)
+	fakeSig := k.Sign(fakeData).Marshal()
+	tx.SetSignature(fakeSig)
+
+	// Create ExecutableData
+	txs = append(txs, tx)
+	block := types.NewBlock(&header, txs, nil, nil, trie.NewStackTrie(nil))
+	envelope := engine.BlockToExecutableData(block, nil, nil)
+
+	// Convert Payload to Block
+	//
+	// This function will check if BLS transactions have the signature field
+	// set. If so, it will reject the block and there should be an error.
+	block2, err := engine.ExecutableDataToBlock(*envelope.ExecutionPayload, nil, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// This should fail since we didn't sign over the txHash
+	err = engine.VerifyAggregate(block2)
+	if err == nil {
+		t.Error(err)
+	}
+	require.Equal(t, engine.InvalidAggSig, err)
+}
+
 func TestBlockToPayloadWithBlobs(t *testing.T) {
 	header := types.Header{}
 	var txs []*types.Transaction

@@ -291,6 +291,10 @@ func (api *ConsensusAPI) forkchoiceUpdated(update engine.ForkchoiceStateV1, payl
 		}
 		return engine.STATUS_SYNCING, nil
 	}
+	// Verify Aggregate Signature if there are any BLS transactions in a block
+	if err := engine.VerifyAggregate(block); err != nil {
+		return engine.INVALID_AGGREGATE_SIG, nil
+	}
 	// Block is known locally, just sanity check that the beacon client does not
 	// attempt to push us back to before the merge.
 	if block.Difficulty().BitLen() > 0 || block.NumberU64() == 0 {
