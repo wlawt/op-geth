@@ -167,12 +167,12 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		}
 
 	case *BLSTx:
-		enc.ChainID = (*hexutil.Big)(itx.ChainID.ToBig())
+		enc.ChainID = (*hexutil.Big)(itx.ChainID)
 		enc.Nonce = (*hexutil.Uint64)(&itx.Nonce)
 		enc.Gas = (*hexutil.Uint64)(&itx.Gas)
-		enc.MaxFeePerGas = (*hexutil.Big)(itx.GasFeeCap.ToBig())
-		enc.MaxPriorityFeePerGas = (*hexutil.Big)(itx.GasTipCap.ToBig())
-		enc.Value = (*hexutil.Big)(itx.Value.ToBig())
+		enc.MaxFeePerGas = (*hexutil.Big)(itx.GasFeeCap)
+		enc.MaxPriorityFeePerGas = (*hexutil.Big)(itx.GasTipCap)
+		enc.Value = (*hexutil.Big)(itx.Value)
 		enc.Input = (*hexutil.Bytes)(&itx.Data)
 		enc.AccessList = &itx.AccessList
 		enc.To = tx.To()
@@ -456,15 +456,12 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		if dec.ChainID == nil {
 			return errors.New("missing required field 'chainId' in transaction")
 		}
-		itx.ChainID = uint256.MustFromBig((*big.Int)(dec.ChainID))
+		itx.ChainID = (*big.Int)(dec.ChainID)
 		if dec.Nonce == nil {
 			return errors.New("missing required field 'nonce' in transaction")
 		}
 		itx.Nonce = uint64(*dec.Nonce)
-		if dec.To == nil {
-			return errors.New("missing required field 'to' in transaction")
-		}
-		itx.To = *dec.To
+		itx.To = dec.To
 		if dec.Gas == nil {
 			return errors.New("missing required field 'gas' for txdata")
 		}
@@ -472,15 +469,15 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		if dec.MaxPriorityFeePerGas == nil {
 			return errors.New("missing required field 'maxPriorityFeePerGas' for txdata")
 		}
-		itx.GasTipCap = uint256.MustFromBig((*big.Int)(dec.MaxPriorityFeePerGas))
+		itx.GasTipCap = (*big.Int)(dec.MaxPriorityFeePerGas)
 		if dec.MaxFeePerGas == nil {
 			return errors.New("missing required field 'maxFeePerGas' for txdata")
 		}
-		itx.GasFeeCap = uint256.MustFromBig((*big.Int)(dec.MaxFeePerGas))
+		itx.GasFeeCap = (*big.Int)(dec.MaxFeePerGas)
 		if dec.Value == nil {
 			return errors.New("missing required field 'value' in transaction")
 		}
-		itx.Value = uint256.MustFromBig((*big.Int)(dec.Value))
+		itx.Value = (*big.Int)(dec.Value)
 		if dec.Input == nil {
 			return errors.New("missing required field 'input' in transaction")
 		}
