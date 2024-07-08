@@ -301,7 +301,7 @@ func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction)
 		if err != nil {
 			return err
 		}
-		log.Info("[MY TEST] HIIIII")
+		log.Info("[MY TEST] HIIIII ")
 		if err := b.eth.seqRPCService.CallContext(ctx, nil, "eth_sendRawTransaction", hexutil.Encode(data)); err != nil {
 			return err
 		}
