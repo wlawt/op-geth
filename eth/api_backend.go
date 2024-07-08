@@ -304,6 +304,7 @@ func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction)
 		if err := b.eth.seqRPCService.CallContext(ctx, nil, "eth_sendRawTransaction", hexutil.Encode(data)); err != nil {
 			return err
 		}
+		log.Info("[MY TEST] PASSSS")
 		if b.disableTxPool {
 			return nil
 		}
