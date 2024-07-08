@@ -127,8 +127,14 @@ func ValidateTransaction(tx *types.Transaction, head *types.Header, signer types
 		return core.ErrTipAboveFeeCap
 	}
 	// Make sure the transaction is signed properly
-	if _, err := types.Sender(signer, tx); err != nil {
-		return ErrInvalidSender
+	if tx.Type() == types.BLSTxType {
+		if _, err := signer.Sender(tx); err != nil {
+			return fmt.Errorf("BLS Sender error %v", err)
+		}
+	} else {
+		if _, err := types.Sender(signer, tx); err != nil {
+			return ErrInvalidSender
+		}
 	}
 	// Ensure the transaction has more gas than the bare minimum needed to cover
 	// the transaction metadata
