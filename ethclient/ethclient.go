@@ -618,11 +618,9 @@ func (ec *Client) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64
 // contract address after the transaction has been mined.
 func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	data, err := tx.MarshalBinary()
-	fmt.Printf("[TEST TEST TEST] WORKING\n")
 	if err != nil {
 		return err
 	}
-	fmt.Printf("[TEST TEST TEST] NOT WORKING\n")
 	return ec.c.CallContext(ctx, nil, "eth_sendRawTransaction", hexutil.Encode(data))
 }
 

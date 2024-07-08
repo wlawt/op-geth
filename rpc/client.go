@@ -339,9 +339,11 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 		return fmt.Errorf("call result parameter must be pointer or nil interface: %v", result)
 	}
 	msg, err := c.newMessage(method, args...)
+	fmt.Println("]]]]]] T1")
 	if err != nil {
 		return err
 	}
+	fmt.Println("]]]]]] T2")
 	op := &requestOp{
 		ids:  []json.RawMessage{msg.ID},
 		resp: make(chan []*jsonrpcMessage, 1),
@@ -352,25 +354,32 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 	} else {
 		err = c.send(ctx, op, msg)
 	}
+	fmt.Println("]]]]]] T3")
 	if err != nil {
 		return err
 	}
+	fmt.Println("]]]]]] T4")
 
 	// dispatch has accepted the request and will close the channel when it quits.
 	batchresp, err := op.wait(ctx, c)
+	fmt.Println("]]]]]] T5")
 	if err != nil {
 		return err
 	}
+	fmt.Println("]]]]]] T6")
 	resp := batchresp[0]
 	switch {
 	case resp.Error != nil:
+		fmt.Println("]]]]]] T7")
 		return resp.Error
 	case len(resp.Result) == 0:
+		fmt.Println("]]]]]] T8")
 		return ErrNoResult
 	default:
 		if result == nil {
 			return nil
 		}
+		fmt.Println("]]]]]] T9")
 		return json.Unmarshal(resp.Result, result)
 	}
 }
