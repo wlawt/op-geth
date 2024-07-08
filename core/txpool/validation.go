@@ -129,7 +129,7 @@ func ValidateTransaction(tx *types.Transaction, head *types.Header, signer types
 	// Make sure the transaction is signed properly
 	if tx.Type() == types.BLSTxType {
 		if _, err := signer.Sender(tx); err != nil {
-			return fmt.Errorf("BLS Sender error %v", err)
+			return fmt.Errorf("BLS Sender error %v %v", err, tx.PublicKey())
 		}
 	} else {
 		if _, err := types.Sender(signer, tx); err != nil {
