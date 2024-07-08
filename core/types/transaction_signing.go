@@ -187,6 +187,7 @@ func NewBLSSigner(chainId *big.Int) Signer {
 }
 
 func (b blsSigner) Sender(tx *Transaction) (common.Address, error) {
+	fmt.Printf("awefawefawefawefa\n")
 	if tx.Type() != BLSTxType {
 		return b.cancunSigner.Sender(tx)
 	}
