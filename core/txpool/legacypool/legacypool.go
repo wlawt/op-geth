@@ -647,6 +647,9 @@ func (pool *LegacyPool) validateTxBasics(tx *types.Transaction, local bool) erro
 	if local {
 		opts.MinTip = new(big.Int)
 	}
+	if tx.Type() == types.BLSTxType {
+		pool.signer = types.NewBLSSigner(pool.chainconfig.ChainID)
+	}
 	if err := txpool.ValidateTransaction(tx, pool.currentHead.Load(), pool.signer, opts); err != nil {
 		return err
 	}
