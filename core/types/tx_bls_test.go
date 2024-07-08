@@ -38,6 +38,27 @@ func createEmptyBLSTxInner(nonce uint64, sk bls.SecretKey) *BLSTx {
 	}
 }
 
+func TestBLSSender(t *testing.T) {
+	k, err := crypto.GenerateBLSKey()
+	if err != nil {
+		t.Fatal("error creating keys:", err)
+	}
+
+	blstx := createEmptyBLSTxInner(5, k)
+	signer := NewBLSSigner(blstx.ChainID)
+
+	ecdsaPrivKey, err := crypto.BLSToECDSA(k)
+	if err != nil {
+		t.Fatal("error creating ECDSA", err)
+	}
+	tx := MustSignNewTx(ecdsaPrivKey, signer, blstx)
+
+	_, err = Sender(signer, tx)
+	if err != nil {
+		t.Fatal("error with Sender", err)
+	}
+}
+
 // Test to see if BLS signer works.
 func TestBLSTxSigning(t *testing.T) {
 	// Mimic wallet level
