@@ -1906,7 +1906,6 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	if err != nil {
 		return nil, err
 	}
-	panic("FOUND3")
 	receipts, err := s.b.GetReceipts(ctx, blockHash)
 	if err != nil {
 		return nil, err
