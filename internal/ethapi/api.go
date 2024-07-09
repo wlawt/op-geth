@@ -1869,6 +1869,7 @@ func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.H
 		}
 		return nil, NewTxIndexingError()
 	}
+	panic("FOUND")
 	header, err := s.b.HeaderByHash(ctx, blockHash)
 	if err != nil {
 		return nil, err
