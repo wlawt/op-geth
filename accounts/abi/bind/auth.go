@@ -166,10 +166,7 @@ func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*Tr
 }
 
 func NewKeyedTransactorWithChainIDBLS(key *ecdsa.PrivateKey, blsKey bls.SecretKey, chainID *big.Int) (*TransactOpts, error) {
-	keyAddr, err := crypto.BLSToAddress(blsKey.PublicKey().Marshal())
-	if err != nil {
-		return nil, err
-	}
+	keyAddr := crypto.PubkeyToAddress(key.PublicKey)
 	if chainID == nil {
 		return nil, ErrNoChainID
 	}
