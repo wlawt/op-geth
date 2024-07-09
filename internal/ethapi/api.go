@@ -1882,7 +1882,12 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	receipt := receipts[index]
 
 	// Derive the sender.
-	signer := types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
+	var signer types.Signer
+	if tx.Type() == types.BLSTxType {
+		signer = types.NewBLSSigner(s.b.ChainConfig().ChainID)
+	} else {
+		signer = types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
+	}
 	return marshalReceipt(receipt, blockHash, blockNumber, signer, tx, int(index), s.b.ChainConfig()), nil
 }
 
