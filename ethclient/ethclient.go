@@ -308,6 +308,7 @@ func (ec *Client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*
 	var r *types.Receipt
 	err := ec.c.CallContext(ctx, &r, "eth_getTransactionReceipt", txHash)
 	if err == nil && r == nil {
+		panic("FOUND6")
 		return nil, ethereum.NotFound
 	}
 	return r, err
