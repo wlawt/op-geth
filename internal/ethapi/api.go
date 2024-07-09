@@ -1915,7 +1915,6 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	}
 	receipt := receipts[index]
 
-	panic("FOUND4")
 	// Derive the sender.
 	signer := types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
 	return marshalReceipt(receipt, blockHash, blockNumber, signer, tx, int(index), s.b.ChainConfig()), nil
@@ -1986,6 +1985,7 @@ func marshalReceipt(receipt *types.Receipt, blockHash common.Hash, blockNumber u
 	if receipt.ContractAddress != (common.Address{}) {
 		fields["contractAddress"] = receipt.ContractAddress
 	}
+	panic("FOUND5")
 	return fields
 }
 
