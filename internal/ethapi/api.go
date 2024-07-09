@@ -1899,7 +1899,6 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	if err != nil {
 		return nil, NewTxIndexingError() // transaction is not fully indexed
 	}
-	panic("FOUND2")
 	if !found {
 		return nil, nil // transaction is not existent or reachable
 	}
