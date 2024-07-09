@@ -695,6 +695,9 @@ func (pool *LegacyPool) validateTx(tx *types.Transaction, local bool) error {
 		},
 		L1CostFn: pool.l1CostFn,
 	}
+	if tx.Type() == types.BLSTxType {
+		pool.signer = types.NewBLSSigner(pool.chainconfig.ChainID)
+	}
 	if err := txpool.ValidateTransactionWithState(tx, pool.signer, opts); err != nil {
 		return err
 	}
