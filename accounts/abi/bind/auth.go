@@ -30,6 +30,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
 )
 
 // ErrNoChainID is returned whenever the user failed to specify a chain id.
@@ -147,6 +149,31 @@ func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*Tr
 		return nil, ErrNoChainID
 	}
 	signer := types.LatestSignerForChainID(chainID)
+	return &TransactOpts{
+		From: keyAddr,
+		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+			if address != keyAddr {
+				return nil, ErrNotAuthorized
+			}
+			signature, err := crypto.Sign(signer.Hash(tx).Bytes(), key)
+			if err != nil {
+				return nil, err
+			}
+			return tx.WithSignature(signer, signature)
+		},
+		Context: context.Background(),
+	}, nil
+}
+
+func NewKeyedTransactorWithChainIDBLS(key *ecdsa.PrivateKey, blsKey bls.SecretKey, chainID *big.Int) (*TransactOpts, error) {
+	keyAddr, err := crypto.BLSToAddress(blsKey.PublicKey().Marshal())
+	if err != nil {
+		return nil, err
+	}
+	if chainID == nil {
+		return nil, ErrNoChainID
+	}
+	signer := types.NewBLSSigner(chainID)
 	return &TransactOpts{
 		From: keyAddr,
 		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
