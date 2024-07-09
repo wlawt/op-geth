@@ -1869,7 +1869,6 @@ func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.H
 		}
 		return nil, NewTxIndexingError()
 	}
-	panic("FOUND")
 	header, err := s.b.HeaderByHash(ctx, blockHash)
 	if err != nil {
 		return nil, err
@@ -1897,9 +1896,11 @@ func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash commo
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash.
 func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
 	found, tx, blockHash, blockNumber, index, err := s.b.GetTransaction(ctx, hash)
+	panic("FOUND1")
 	if err != nil {
 		return nil, NewTxIndexingError() // transaction is not fully indexed
 	}
+	panic("FOUND2")
 	if !found {
 		return nil, nil // transaction is not existent or reachable
 	}
@@ -1907,6 +1908,7 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	if err != nil {
 		return nil, err
 	}
+	panic("FOUND3")
 	receipts, err := s.b.GetReceipts(ctx, blockHash)
 	if err != nil {
 		return nil, err
@@ -1916,6 +1918,7 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	}
 	receipt := receipts[index]
 
+	panic("FOUND4")
 	// Derive the sender.
 	signer := types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
 	return marshalReceipt(receipt, blockHash, blockNumber, signer, tx, int(index), s.b.ChainConfig()), nil
