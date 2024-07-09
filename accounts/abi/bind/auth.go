@@ -173,10 +173,15 @@ func NewKeyedTransactorWithChainIDBLS(key *ecdsa.PrivateKey, blsKey bls.SecretKe
 	if chainID == nil {
 		return nil, ErrNoChainID
 	}
+	signer := types.NewBLSSigner(chainID)
 	return &TransactOpts{
 		From: keyAddr,
 		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			return tx, nil
+			if address != keyAddr {
+				return nil, ErrNotAuthorized
+			}
+			signature := blsKey.Sign(signer.Hash(tx).Bytes())
+			return tx.WithSignature(signer, signature.Marshal())
 		},
 		Context: context.Background(),
 	}, nil
