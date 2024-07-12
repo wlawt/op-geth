@@ -2017,7 +2017,12 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 	}
 	// Print a log with full tx details for manual investigations and interventions
 	head := b.CurrentBlock()
-	signer := types.MakeSigner(b.ChainConfig(), head.Number, head.Time)
+	var signer types.Signer
+	if tx.Type() == types.BLSTxType {
+		signer = types.NewBLSSigner(b.ChainConfig().ChainID)
+	} else {
+		signer = types.MakeSigner(b.ChainConfig(), head.Number, head.Time)
+	}
 	from, err := types.Sender(signer, tx)
 	if err != nil {
 		return common.Hash{}, err
