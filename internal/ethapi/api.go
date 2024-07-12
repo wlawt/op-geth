@@ -1018,11 +1018,14 @@ func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.
 		return nil, fmt.Errorf("receipts length mismatch: %d vs %d", len(txs), len(receipts))
 	}
 
-	// Derive the sender.
-	signer := types.MakeSigner(s.b.ChainConfig(), block.Number(), block.Time())
-
 	result := make([]map[string]interface{}, len(receipts))
 	for i, receipt := range receipts {
+		var signer types.Signer
+		if txs[i].Type() == types.BLSTxType {
+			signer = types.NewBLSSigner(s.b.ChainConfig().ChainID)
+		} else {
+			signer = types.MakeSigner(s.b.ChainConfig(), block.Number(), block.Time())
+		}
 		result[i] = marshalReceipt(receipt, block.Hash(), block.NumberU64(), signer, txs[i], i, s.b.ChainConfig())
 	}
 
@@ -1465,7 +1468,12 @@ type RPCTransaction struct {
 // newRPCTransaction returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
 func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, blockTime uint64, index uint64, baseFee *big.Int, config *params.ChainConfig, receipt *types.Receipt) *RPCTransaction {
-	signer := types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
+	var signer types.Signer
+	if tx.Type() == types.BLSTxType {
+		signer = types.NewBLSSigner(config.ChainID)
+	} else {
+		signer = types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
+	}
 	from, _ := types.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
 	var result *RPCTransaction
@@ -1916,7 +1924,12 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	receipt := receipts[index]
 
 	// Derive the sender.
-	signer := types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
+	var signer types.Signer
+	if tx.Type() == types.BLSTxType {
+		signer = types.NewBLSSigner(s.b.ChainConfig().ChainID)
+	} else {
+		signer = types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
+	}
 	return marshalReceipt(receipt, blockHash, blockNumber, signer, tx, int(index), s.b.ChainConfig()), nil
 }
 
