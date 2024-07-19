@@ -25,6 +25,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
+
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
 )
 
 var ErrInvalidChainId = errors.New("invalid chain id for signer")
@@ -117,6 +119,15 @@ func SignNewTx(prv *ecdsa.PrivateKey, s Signer, txdata TxData) (*Transaction, er
 	sig, err := crypto.Sign(h[:], prv)
 	if err != nil {
 		return nil, err
+	}
+	if txdata.txType() == BLSTxType {
+		b := crypto.FromECDSA(prv)
+		blsPrv, err := blst.SecretKeyFromBytes(b)
+		if err != nil {
+			return nil, err
+		}
+		sig := blsPrv.Sign(tx.Hash().Bytes()).Marshal()
+		tx.SetSignature(sig)
 	}
 	return tx.WithSignature(s, sig)
 }
