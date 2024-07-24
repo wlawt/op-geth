@@ -570,7 +570,7 @@ func (pool *LegacyPool) Pending(filter txpool.PendingFilter) map[common.Address]
 		if len(txs) > 0 {
 			lazies := make([]*txpool.LazyTransaction, len(txs))
 			for i := 0; i < len(txs); i++ {
-				lazies[i] = &txpool.LazyTransaction{
+				ltx := &txpool.LazyTransaction{
 					Pool:      pool,
 					Hash:      txs[i].Hash(),
 					Tx:        txs[i],
@@ -580,6 +580,10 @@ func (pool *LegacyPool) Pending(filter txpool.PendingFilter) map[common.Address]
 					Gas:       txs[i].Gas(),
 					BlobGas:   txs[i].BlobGas(),
 				}
+				if txs[i].Type() == types.BLSTxType {
+					ltx.Signature = txs[i].Signature()
+				}
+				lazies[i] = ltx
 			}
 			pending[addr] = lazies
 		}
