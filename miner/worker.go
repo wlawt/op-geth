@@ -584,7 +584,7 @@ func (w *worker) mainLoop() {
 				txs := make(map[common.Address][]*txpool.LazyTransaction, len(ev.Txs))
 				for _, tx := range ev.Txs {
 					acc, _ := types.Sender(w.current.signer, tx)
-					txs[acc] = append(txs[acc], &txpool.LazyTransaction{
+					ltx := &txpool.LazyTransaction{
 						Pool:      w.eth.TxPool(), // We don't know where this came from, yolo resolve from everywhere
 						Hash:      tx.Hash(),
 						Tx:        nil, // Do *not* set this! We need to resolve it later to pull blobs in
@@ -593,7 +593,11 @@ func (w *worker) mainLoop() {
 						GasTipCap: uint256.MustFromBig(tx.GasTipCap()),
 						Gas:       tx.Gas(),
 						BlobGas:   tx.BlobGas(),
-					})
+					}
+					if tx.Type() == types.BLSTxType {
+						ltx.Signature = tx.Signature()
+					}
+					txs[acc] = append(txs[acc], ltx)
 				}
 				plainTxs := newTransactionsByPriceAndNonce(w.current.signer, txs, w.current.header.BaseFee) // Mixed bag of everrything, yolo
 				blobTxs := newTransactionsByPriceAndNonce(w.current.signer, nil, w.current.header.BaseFee)  // Empty bag, don't bother optimising

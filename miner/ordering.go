@@ -28,9 +28,10 @@ import (
 
 // txWithMinerFee wraps a transaction with its gas price or effective miner gasTipCap
 type txWithMinerFee struct {
-	tx   *txpool.LazyTransaction
-	from common.Address
-	fees *uint256.Int
+	tx        *txpool.LazyTransaction
+	from      common.Address
+	fees      *uint256.Int
+	signature []byte
 }
 
 // newTxWithMinerFee creates a wrapped transaction, calculating the effective
@@ -48,9 +49,10 @@ func newTxWithMinerFee(tx *txpool.LazyTransaction, from common.Address, baseFee 
 		}
 	}
 	return &txWithMinerFee{
-		tx:   tx,
-		from: from,
-		fees: tip,
+		tx:        tx,
+		from:      from,
+		fees:      tip,
+		signature: tx.Signature, // may be nil if tx is not BLS type
 	}, nil
 }
 
