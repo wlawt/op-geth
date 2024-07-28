@@ -284,11 +284,11 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 		}
 	}
 	// Blocks with transactions containing the signature field MUST be rejected
-	for i, tx := range txs {
+	/*for i, tx := range txs {
 		if tx.Type() == types.BLSTxType && len(tx.Signature()) != 0 {
 			return nil, fmt.Errorf("transaction %v has signature field still set", i)
 		}
-	}
+	}*/
 	// Only set withdrawalsRoot if it is non-nil. This allows CLs to use
 	// ExecutableData before withdrawals are enabled by marshaling
 	// Withdrawals as the json null value.
