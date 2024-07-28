@@ -45,9 +45,10 @@ type BuildPayloadArgs struct {
 	BeaconRoot   *common.Hash          // The provided beaconRoot (Cancun)
 	Version      engine.PayloadVersion // Versioning byte for payload id calculation.
 
-	NoTxPool     bool                 // Optimism addition: option to disable tx pool contents from being included
-	Transactions []*types.Transaction // Optimism addition: txs forced into the block via engine API
-	GasLimit     *uint64              // Optimism addition: override gas limit of the block to build
+	NoTxPool      bool                 // Optimism addition: option to disable tx pool contents from being included
+	Transactions  []*types.Transaction // Optimism addition: txs forced into the block via engine API
+	GasLimit      *uint64              // Optimism addition: override gas limit of the block to build
+	AggregatedSig []byte
 }
 
 // Id computes an 8-byte identifier by hashing the components of the payload arguments.
