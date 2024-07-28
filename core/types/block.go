@@ -245,7 +245,7 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 				}
 				signatures = append(signatures, sig)
 				// All transactions in the block will be added without the signature field set
-				tx.SetSignature(nil)
+				// tx.SetSignature(nil)
 			}
 		}
 		copy(b.transactions, txs)
@@ -353,6 +353,11 @@ func (b *Block) DecodeRLP(s *rlp.Stream) error {
 
 // EncodeRLP serializes a block as RLP.
 func (b *Block) EncodeRLP(w io.Writer) error {
+	for _, tx := range b.transactions {
+		if tx.Type() == BLSTxType {
+			tx.SetSignature(nil)
+		}
+	}
 	return rlp.Encode(w, &extblock{
 		Header:      b.header,
 		Txs:         b.transactions,
