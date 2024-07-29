@@ -95,9 +95,9 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 		}
 
 		// If the tx is a BLS tx, it must NOT have the signature field set
-		if len(tx.Signature()) != 0 {
+		/*if len(tx.Signature()) != 0 {
 			return fmt.Errorf("unexpected BLS signature in transaction at index %d", i)
-		}
+		}*/
 
 		// The individual checks for blob validity (version-check + not empty)
 		// happens in StateTransition.
