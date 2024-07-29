@@ -56,6 +56,9 @@ import (
 	"github.com/ethereum/go-ethereum/internal/blocktest"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
+
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls/blst"
 )
 
 func TestNewRPCTransactionDepositTx(t *testing.T) {
@@ -268,6 +271,54 @@ func TestTransactionBlobTx(t *testing.T) {
 	tests := allBlobTxs(common.Address{0xde, 0xad}, &config)
 
 	testTransactionMarshal(t, tests, &config)
+}
+
+func TestTransactionBLSTx(t *testing.T) {
+	input := []byte{0x25, 0x29, 0x5f, 0x0d, 0x1d, 0x59, 0x2a, 0x90, 0xb3, 0x33, 0xe2, 0x6e, 0x85, 0x14, 0x97, 0x08, 0x20, 0x8e, 0x9f, 0x8e, 0x8b, 0xc1, 0x8f, 0x6c, 0x77, 0xbd, 0x62, 0xf8, 0xad, 0x7a, 0x68, 0x66}
+	k, err := blst.SecretKeyFromBytes(input)
+	if err != nil {
+		t.Fatalf("could not generate BLS private key")
+	}
+
+	var (
+		config = params.AllEthashProtocolChanges
+		tests  = allBLSTxs(k, config)
+	)
+
+	signer := types.NewBLSSigner(config.ChainID)
+	ecdsaPrivKey, err := crypto.BLSToECDSA(k)
+	if err != nil {
+		t.Fatalf("could not convert BLS private key")
+	}
+
+	for i, tt := range tests {
+		var tx2 types.Transaction
+		tx, err := types.SignNewTx(ecdsaPrivKey, signer, tt.Tx)
+		if err != nil {
+			t.Fatalf("test %d: signing failed: %v", i, err)
+		}
+		// Regular transaction
+		if data, err := json.Marshal(tx); err != nil {
+			t.Fatalf("test %d: marshalling failed; %v", i, err)
+		} else if err = tx2.UnmarshalJSON(data); err != nil {
+			t.Fatalf("test %d: sunmarshal failed: %v", i, err)
+		} else if want, have := tx.Hash(), tx2.Hash(); want != have {
+			t.Fatalf("test %d: stx changed, want %x have %x", i, want, have)
+		}
+
+		// rpcTransaction
+		rpcTx := newRPCTransaction(tx, common.Hash{}, 0, 0, 0, nil, config, nil)
+		if data, err := json.Marshal(rpcTx); err != nil {
+			t.Fatalf("test %d: marshalling failed; %v", i, err)
+		} else if err = tx2.UnmarshalJSON(data); err != nil {
+			t.Fatalf("test %d: unmarshal failed: %v", i, err)
+		} else if want, have := tx.Hash(), tx2.Hash(); want != have {
+			t.Fatalf("test %d: tx changed, want %x have %x", i, want, have)
+		} else {
+			want, have := tt.Want, string(data)
+			require.JSONEqf(t, want, have, "test %d: rpc json not match, want %s have %s", i, want, have)
+		}
+	}
 }
 
 type txData struct {
@@ -562,6 +613,44 @@ func allBlobTxs(addr common.Address, config *params.ChainConfig) []txData {
                 "s": "0x27b2bc6c80e849a8e8b764d4549d8c2efac3441e73cf37054eb0a9b9f8e89b27",
                 "yParity": "0x0"
             }`,
+		},
+	}
+}
+
+func allBLSTxs(k bls.SecretKey, config *params.ChainConfig) []txData {
+	return []txData{
+		{
+			Tx: &types.BLSTx{
+				ChainID:    config.ChainID,
+				Nonce:      6,
+				GasTipCap:  big.NewInt(6),
+				GasFeeCap:  big.NewInt(9),
+				Gas:        7,
+				To:         nil,
+				Value:      big.NewInt(8),
+				Data:       []byte{0, 1, 2, 3, 4},
+				AccessList: types.AccessList{},
+				PublicKey:  k.PublicKey().Marshal(),
+			},
+			Want: `{
+				"accessList":[], 
+				"blockHash": null, 
+				"blockNumber": null, 
+				"chainId": "0x539", 
+				"from": "0x0000000000000000000000000000000000000000", 
+				"gas": "0x7", 
+				"gasPrice": "0x9", 
+				"hash": "0x55af8859fbfe1473ca55d99d26dca10704f6429d41e07eeea18a0d951d8d30e1", 
+				"input": "0x0001020304", 
+				"maxFeePerGas": "0x9", 
+				"maxPriorityFeePerGas": "0x6", 
+				"nonce": "0x6", 
+				"publicKey": "qZp27XeW974i1bfoXe63xWd+iOUR4LM3YY+MTrYTSbS/LRU/ZJ97UzWf6LlKOORM", 
+				"to": null, 
+				"transactionIndex": null, 
+				"type": "0x4", 
+				"value":"0x8"
+			}`,
 		},
 	}
 }

@@ -37,6 +37,8 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/params/forks"
 	"github.com/ethereum/go-ethereum/rpc"
+
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
 )
 
 // Register adds the engine API to the full node.
@@ -291,6 +293,10 @@ func (api *ConsensusAPI) forkchoiceUpdated(update engine.ForkchoiceStateV1, payl
 		}
 		return engine.STATUS_SYNCING, nil
 	}
+	// Verify Aggregate Signature if there are any BLS transactions in a block
+	if err := engine.VerifyAggregate(block); err != nil {
+		return engine.INVALID_AGGREGATE_SIG, nil
+	}
 	// Block is known locally, just sanity check that the beacon client does not
 	// attempt to push us back to before the merge.
 	if block.Difficulty().BitLen() > 0 || block.NumberU64() == 0 {
@@ -375,24 +381,37 @@ func (api *ConsensusAPI) forkchoiceUpdated(update engine.ForkchoiceStateV1, payl
 			return engine.STATUS_INVALID, engine.InvalidPayloadAttributes.With(errors.New("gasLimit parameter is required"))
 		}
 		transactions := make(types.Transactions, 0, len(payloadAttributes.Transactions))
+		var signatures []bls.Signature
 		for i, otx := range payloadAttributes.Transactions {
 			var tx types.Transaction
 			if err := tx.UnmarshalBinary(otx); err != nil {
 				return engine.STATUS_INVALID, fmt.Errorf("transaction %d is not valid: %v", i, err)
 			}
 			transactions = append(transactions, &tx)
+			if tx.Type() == types.BLSTxType {
+				sig, err := bls.SignatureFromBytes(tx.Signature())
+				if err != nil {
+					return engine.STATUS_INVALID, fmt.Errorf("transaction %d is not valid BLS signature: %v", i, err)
+				}
+				signatures = append(signatures, sig)
+			}
+		}
+		var aggregatedSig []byte
+		if len(signatures) != 0 {
+			aggregatedSig = bls.AggregateSignatures(signatures).Marshal()
 		}
 		args := &miner.BuildPayloadArgs{
-			Parent:       update.HeadBlockHash,
-			Timestamp:    payloadAttributes.Timestamp,
-			FeeRecipient: payloadAttributes.SuggestedFeeRecipient,
-			Random:       payloadAttributes.Random,
-			Withdrawals:  payloadAttributes.Withdrawals,
-			BeaconRoot:   payloadAttributes.BeaconRoot,
-			NoTxPool:     payloadAttributes.NoTxPool,
-			Transactions: transactions,
-			GasLimit:     payloadAttributes.GasLimit,
-			Version:      payloadVersion,
+			Parent:        update.HeadBlockHash,
+			Timestamp:     payloadAttributes.Timestamp,
+			FeeRecipient:  payloadAttributes.SuggestedFeeRecipient,
+			Random:        payloadAttributes.Random,
+			Withdrawals:   payloadAttributes.Withdrawals,
+			BeaconRoot:    payloadAttributes.BeaconRoot,
+			NoTxPool:      payloadAttributes.NoTxPool,
+			Transactions:  transactions,
+			GasLimit:      payloadAttributes.GasLimit,
+			Version:       payloadVersion,
+			AggregatedSig: aggregatedSig,
 		}
 		id := args.Id()
 		// If we already are busy generating this work, then we do not need

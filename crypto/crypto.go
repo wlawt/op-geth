@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/prysmaticlabs/prysm/v5/crypto/bls"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -101,6 +102,36 @@ func Keccak512(data ...[]byte) []byte {
 		d.Write(b)
 	}
 	return d.Sum(nil)
+}
+
+// Create a new BLS public and secret key. This should
+// only be used for testing.
+func GenerateBLSKey() (bls.SecretKey, error) {
+	sk, err := bls.RandKey()
+	if err != nil {
+		return nil, err
+	}
+	return sk, nil
+}
+
+// Both the BLS and ECDSA private key uses random 32 bytes. Therefore, we can
+// have these 32 bytes represent 2 different account types (BLS and ECDSA).
+//
+// Dealing with private keys should be abstracted on the wallet level. This
+// is mainly used for testing.
+func BLSToECDSA(privKey bls.SecretKey) (*ecdsa.PrivateKey, error) {
+	privBytes := privKey.Marshal()
+	ecdsaPrivKey, err := ToECDSA(privBytes)
+	if err != nil {
+		return nil, err
+	}
+	return ecdsaPrivKey, nil
+}
+
+// Convert a BLS Public Key (48 bytes) into an [Address]
+func BLSToAddress(pk []byte) (common.Address, error) {
+	pkBytes := Keccak256(pk)
+	return common.BytesToAddress(pkBytes[12:]), nil
 }
 
 // CreateAddress creates an ethereum address given the bytes and the nonce

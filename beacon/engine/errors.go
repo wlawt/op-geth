@@ -81,8 +81,10 @@ var (
 	TooLargeRequest          = &EngineAPIError{code: -38004, msg: "Too large request"}
 	InvalidParams            = &EngineAPIError{code: -32602, msg: "Invalid parameters"}
 	UnsupportedFork          = &EngineAPIError{code: -38005, msg: "Unsupported fork"}
+	InvalidAggSig            = &EngineAPIError{code: -38006, msg: "Invalid aggregated BLS Signature"}
 
 	STATUS_INVALID         = ForkChoiceResponse{PayloadStatus: PayloadStatusV1{Status: INVALID}, PayloadID: nil}
 	STATUS_SYNCING         = ForkChoiceResponse{PayloadStatus: PayloadStatusV1{Status: SYNCING}, PayloadID: nil}
 	INVALID_TERMINAL_BLOCK = PayloadStatusV1{Status: INVALID, LatestValidHash: &common.Hash{}}
+	INVALID_AGGREGATE_SIG  = ForkChoiceResponse{PayloadStatus: PayloadStatusV1{Status: INVALID}, PayloadID: nil}
 )

@@ -1018,11 +1018,14 @@ func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.
 		return nil, fmt.Errorf("receipts length mismatch: %d vs %d", len(txs), len(receipts))
 	}
 
-	// Derive the sender.
-	signer := types.MakeSigner(s.b.ChainConfig(), block.Number(), block.Time())
-
 	result := make([]map[string]interface{}, len(receipts))
 	for i, receipt := range receipts {
+		var signer types.Signer
+		if txs[i].Type() == types.BLSTxType {
+			signer = types.NewBLSSigner(s.b.ChainConfig().ChainID)
+		} else {
+			signer = types.MakeSigner(s.b.ChainConfig(), block.Number(), block.Time())
+		}
 		result[i] = marshalReceipt(receipt, block.Hash(), block.NumberU64(), signer, txs[i], i, s.b.ChainConfig())
 	}
 
@@ -1447,10 +1450,12 @@ type RPCTransaction struct {
 	Accesses            *types.AccessList `json:"accessList,omitempty"`
 	ChainID             *hexutil.Big      `json:"chainId,omitempty"`
 	BlobVersionedHashes []common.Hash     `json:"blobVersionedHashes,omitempty"`
-	V                   *hexutil.Big      `json:"v"`
-	R                   *hexutil.Big      `json:"r"`
-	S                   *hexutil.Big      `json:"s"`
+	V                   *hexutil.Big      `json:"v,omitempty"`
+	R                   *hexutil.Big      `json:"r,omitempty"`
+	S                   *hexutil.Big      `json:"s,omitempty"`
 	YParity             *hexutil.Uint64   `json:"yParity,omitempty"`
+
+	PublicKey []byte `json:"publicKey,omitempty"`
 
 	// deposit-tx only
 	SourceHash *common.Hash `json:"sourceHash,omitempty"`
@@ -1463,22 +1468,43 @@ type RPCTransaction struct {
 // newRPCTransaction returns a transaction that will serialize to the RPC
 // representation, with the given location metadata set (if available).
 func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, blockTime uint64, index uint64, baseFee *big.Int, config *params.ChainConfig, receipt *types.Receipt) *RPCTransaction {
-	signer := types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
+	var signer types.Signer
+	if tx.Type() == types.BLSTxType {
+		signer = types.NewBLSSigner(config.ChainID)
+	} else {
+		signer = types.MakeSigner(config, new(big.Int).SetUint64(blockNumber), blockTime)
+	}
 	from, _ := types.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
-	result := &RPCTransaction{
-		Type:     hexutil.Uint64(tx.Type()),
-		From:     from,
-		Gas:      hexutil.Uint64(tx.Gas()),
-		GasPrice: (*hexutil.Big)(tx.GasPrice()),
-		Hash:     tx.Hash(),
-		Input:    hexutil.Bytes(tx.Data()),
-		Nonce:    hexutil.Uint64(tx.Nonce()),
-		To:       tx.To(),
-		Value:    (*hexutil.Big)(tx.Value()),
-		V:        (*hexutil.Big)(v),
-		R:        (*hexutil.Big)(r),
-		S:        (*hexutil.Big)(s),
+	var result *RPCTransaction
+	if tx.Type() != types.BLSTxType {
+		result = &RPCTransaction{
+			Type:     hexutil.Uint64(tx.Type()),
+			From:     from,
+			Gas:      hexutil.Uint64(tx.Gas()),
+			GasPrice: (*hexutil.Big)(tx.GasPrice()),
+			Hash:     tx.Hash(),
+			Input:    hexutil.Bytes(tx.Data()),
+			Nonce:    hexutil.Uint64(tx.Nonce()),
+			To:       tx.To(),
+			Value:    (*hexutil.Big)(tx.Value()),
+			V:        (*hexutil.Big)(v),
+			R:        (*hexutil.Big)(r),
+			S:        (*hexutil.Big)(s),
+		}
+	} else {
+		result = &RPCTransaction{
+			Type:      hexutil.Uint64(tx.Type()),
+			From:      from,
+			Gas:       hexutil.Uint64(tx.Gas()),
+			GasPrice:  (*hexutil.Big)(tx.GasPrice()),
+			Hash:      tx.Hash(),
+			Input:     hexutil.Bytes(tx.Data()),
+			Nonce:     hexutil.Uint64(tx.Nonce()),
+			To:        tx.To(),
+			Value:     (*hexutil.Big)(tx.Value()),
+			PublicKey: tx.PublicKey(),
+		}
 	}
 	if blockHash != (common.Hash{}) {
 		result.BlockHash = &blockHash
@@ -1552,6 +1578,22 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 		}
 		result.MaxFeePerBlobGas = (*hexutil.Big)(tx.BlobGasFeeCap())
 		result.BlobVersionedHashes = tx.BlobHashes()
+
+	case types.BLSTxType:
+		al := tx.AccessList()
+		result.Accesses = &al
+		result.ChainID = (*hexutil.Big)(tx.ChainId())
+		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
+		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
+		// if the transaction has been mined, compute the effective gas price
+		if baseFee != nil && blockHash != (common.Hash{}) {
+			// price = min(gasTipCap + baseFee, gasFeeCap)
+			result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx, baseFee))
+		} else {
+			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
+		}
+		result.PublicKey = tx.PublicKey()
+
 	}
 	return result
 }
@@ -1882,7 +1924,12 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	receipt := receipts[index]
 
 	// Derive the sender.
-	signer := types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
+	var signer types.Signer
+	if tx.Type() == types.BLSTxType {
+		signer = types.NewBLSSigner(s.b.ChainConfig().ChainID)
+	} else {
+		signer = types.MakeSigner(s.b.ChainConfig(), header.Number, header.Time)
+	}
 	return marshalReceipt(receipt, blockHash, blockNumber, signer, tx, int(index), s.b.ChainConfig()), nil
 }
 
@@ -1983,7 +2030,12 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 	}
 	// Print a log with full tx details for manual investigations and interventions
 	head := b.CurrentBlock()
-	signer := types.MakeSigner(b.ChainConfig(), head.Number, head.Time)
+	var signer types.Signer
+	if tx.Type() == types.BLSTxType {
+		signer = types.NewBLSSigner(b.ChainConfig().ChainID)
+	} else {
+		signer = types.MakeSigner(b.ChainConfig(), head.Number, head.Time)
+	}
 	from, err := types.Sender(signer, tx)
 	if err != nil {
 		return common.Hash{}, err

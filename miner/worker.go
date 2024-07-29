@@ -584,7 +584,7 @@ func (w *worker) mainLoop() {
 				txs := make(map[common.Address][]*txpool.LazyTransaction, len(ev.Txs))
 				for _, tx := range ev.Txs {
 					acc, _ := types.Sender(w.current.signer, tx)
-					txs[acc] = append(txs[acc], &txpool.LazyTransaction{
+					ltx := &txpool.LazyTransaction{
 						Pool:      w.eth.TxPool(), // We don't know where this came from, yolo resolve from everywhere
 						Hash:      tx.Hash(),
 						Tx:        nil, // Do *not* set this! We need to resolve it later to pull blobs in
@@ -593,7 +593,11 @@ func (w *worker) mainLoop() {
 						GasTipCap: uint256.MustFromBig(tx.GasTipCap()),
 						Gas:       tx.Gas(),
 						BlobGas:   tx.BlobGas(),
-					})
+					}
+					if tx.Type() == types.BLSTxType {
+						ltx.Signature = tx.Signature()
+					}
+					txs[acc] = append(txs[acc], ltx)
 				}
 				plainTxs := newTransactionsByPriceAndNonce(w.current.signer, txs, w.current.header.BaseFee) // Mixed bag of everrything, yolo
 				blobTxs := newTransactionsByPriceAndNonce(w.current.signer, nil, w.current.header.BaseFee)  // Empty bag, don't bother optimising
@@ -913,6 +917,9 @@ func (w *worker) commitTransactions(env *environment, plainTxs, blobTxs *transac
 			txs.Pop()
 			continue
 		}
+		if tx.Type() == types.BLSTxType {
+			tx.SetSignature(ltx.Signature)
+		}
 		// Error may be ignored here. The error has already been checked
 		// during transaction acceptance is the transaction pool.
 		from, _ := types.Sender(env.signer, tx)
@@ -980,6 +987,8 @@ type generateParams struct {
 	gasLimit  *uint64            // Optional gas limit override
 	interrupt *atomic.Int32      // Optional interruption signal to pass down to worker.generateWork
 	isUpdate  bool               // Optional flag indicating that this is building a discardable update
+
+	aggregatedSig []byte
 }
 
 // validateParams validates the given parameters.

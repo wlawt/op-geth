@@ -174,6 +174,22 @@ func TestNilSigner(t *testing.T) {
 					t.Fatal("expected signature values error, no nil result or panic")
 				}
 			})
+			// test BLS tx because the signature scheme is different
+			t.Run("blstx", func(t *testing.T) {
+				k, err := crypto.GenerateBLSKey()
+				if err != nil {
+					t.Fatal("error creating key")
+				}
+				blstx := createEmptyBLSTxInner(5, k)
+				ecdsaPrivKey, err := crypto.BLSToECDSA(k)
+				if err != nil {
+					t.Fatal("error converting BLS to ECDSA private key:", err)
+				}
+				_, err = SignNewTx(ecdsaPrivKey, signer, blstx)
+				if !errors.Is(err, ErrInvalidSig) {
+					t.Fatal("expected signature values error, no nil result or panic")
+				}
+			})
 		})
 	}
 }

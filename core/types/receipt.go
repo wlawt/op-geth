@@ -69,6 +69,8 @@ type Receipt struct {
 	EffectiveGasPrice *big.Int       `json:"effectiveGasPrice"` // required, but tag omitted for backwards compatibility
 	BlobGasUsed       uint64         `json:"blobGasUsed,omitempty"`
 	BlobGasPrice      *big.Int       `json:"blobGasPrice,omitempty"`
+	PublicKey         []byte         `json:"publicKey,omitempty"`
+	Signature         []byte         `json:"signature,omitempty"`
 
 	// DepositNonce was introduced in Regolith to store the actual nonce used by deposit transactions
 	// The state transition process ensures this is only set for Regolith deposit transactions.
@@ -329,7 +331,7 @@ func (r *Receipt) decodeTyped(b []byte) error {
 		return errShortTypedReceipt
 	}
 	switch b[0] {
-	case DynamicFeeTxType, AccessListTxType, BlobTxType:
+	case DynamicFeeTxType, AccessListTxType, BlobTxType, BLSTxType:
 		var data receiptRLP
 		err := rlp.DecodeBytes(b[1:], &data)
 		if err != nil {
@@ -502,7 +504,7 @@ func (rs Receipts) EncodeIndex(i int, w *bytes.Buffer) {
 	}
 	w.WriteByte(r.Type)
 	switch r.Type {
-	case AccessListTxType, DynamicFeeTxType, BlobTxType:
+	case AccessListTxType, DynamicFeeTxType, BlobTxType, BLSTxType:
 		rlp.Encode(w, data)
 	case DepositTxType:
 		if r.DepositReceiptVersion != nil {
@@ -533,6 +535,12 @@ func (rs Receipts) DeriveFields(config *params.ChainConfig, hash common.Hash, nu
 		rs[i].Type = txs[i].Type()
 		rs[i].TxHash = txs[i].Hash()
 		rs[i].EffectiveGasPrice = txs[i].inner.effectiveGasPrice(new(big.Int), baseFee)
+
+		// EIP-7591 BLS transaction fields
+		if txs[i].Type() == BLSTxType {
+			rs[i].PublicKey = txs[i].PublicKey()
+			rs[i].Signature = txs[i].Signature()
+		}
 
 		// EIP-4844 blob transaction fields
 		if txs[i].Type() == BlobTxType {

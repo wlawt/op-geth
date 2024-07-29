@@ -285,7 +285,7 @@ func New(config Config, chain BlockChain) *LegacyPool {
 // pool, specifically, whether it is a Legacy, AccessList or Dynamic transaction.
 func (pool *LegacyPool) Filter(tx *types.Transaction) bool {
 	switch tx.Type() {
-	case types.LegacyTxType, types.AccessListTxType, types.DynamicFeeTxType:
+	case types.LegacyTxType, types.AccessListTxType, types.DynamicFeeTxType, types.BLSTxType:
 		return true
 	default:
 		return false
@@ -570,7 +570,7 @@ func (pool *LegacyPool) Pending(filter txpool.PendingFilter) map[common.Address]
 		if len(txs) > 0 {
 			lazies := make([]*txpool.LazyTransaction, len(txs))
 			for i := 0; i < len(txs); i++ {
-				lazies[i] = &txpool.LazyTransaction{
+				ltx := &txpool.LazyTransaction{
 					Pool:      pool,
 					Hash:      txs[i].Hash(),
 					Tx:        txs[i],
@@ -580,6 +580,10 @@ func (pool *LegacyPool) Pending(filter txpool.PendingFilter) map[common.Address]
 					Gas:       txs[i].Gas(),
 					BlobGas:   txs[i].BlobGas(),
 				}
+				if txs[i].Type() == types.BLSTxType {
+					ltx.Signature = txs[i].Signature()
+				}
+				lazies[i] = ltx
 			}
 			pending[addr] = lazies
 		}
@@ -638,13 +642,17 @@ func (pool *LegacyPool) validateTxBasics(tx *types.Transaction, local bool) erro
 		Accept: 0 |
 			1<<types.LegacyTxType |
 			1<<types.AccessListTxType |
-			1<<types.DynamicFeeTxType,
+			1<<types.DynamicFeeTxType |
+			1<<types.BLSTxType,
 		MaxSize:          txMaxSize,
 		MinTip:           pool.gasTip.Load().ToBig(),
 		EffectiveGasCeil: pool.config.EffectiveGasCeil,
 	}
 	if local {
 		opts.MinTip = new(big.Int)
+	}
+	if tx.Type() == types.BLSTxType {
+		pool.signer = types.NewBLSSigner(pool.chainconfig.ChainID)
 	}
 	if err := txpool.ValidateTransaction(tx, pool.currentHead.Load(), pool.signer, opts); err != nil {
 		return err
