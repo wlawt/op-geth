@@ -289,6 +289,23 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 			return nil, fmt.Errorf("transaction %v has signature field still set", i)
 		}
 	}*/
+
+	var (
+		signatures    []bls.Signature
+		aggregatedSig []byte
+	)
+	for i, tx := range txs {
+		if tx.Type() == types.BLSTxType {
+			sig, err := bls.SignatureFromBytes(tx.Signature())
+			if err != nil {
+				return nil, fmt.Errorf("transaction %d could not get BLS signature: %v", i, err)
+			}
+			signatures = append(signatures, sig)
+		}
+	}
+	if len(signatures) != 0 {
+		aggregatedSig = bls.AggregateSignatures(signatures).Marshal()
+	}
 	// Only set withdrawalsRoot if it is non-nil. This allows CLs to use
 	// ExecutableData before withdrawals are enabled by marshaling
 	// Withdrawals as the json null value.
@@ -317,7 +334,7 @@ func ExecutableDataToBlock(params ExecutableData, versionedHashes []common.Hash,
 		ExcessBlobGas:    params.ExcessBlobGas,
 		BlobGasUsed:      params.BlobGasUsed,
 		ParentBeaconRoot: beaconRoot,
-		AggregatedSig:    params.AggregatedSig,
+		AggregatedSig:    aggregatedSig,
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */).WithWithdrawals(params.Withdrawals)
 	if block.Hash() != params.BlockHash {
