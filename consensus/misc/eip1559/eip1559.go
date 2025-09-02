@@ -132,6 +132,52 @@ func ValidateHoloceneExtraData(extra []byte) error {
 	return ValidateHolocene1559Params(extra[1:])
 }
 
+// DecodeMinBaseFeeExtraData decodes the extraData parameters from the encoded form defined here:
+// https://specs.optimism.io/protocol/jovian/exec-engine.html
+//
+// Returns 0,0,0 if the format is invalid, though ValidateMinBaseFeeExtraData should be used instead of this function for
+// validity checking.
+func DecodeMinBaseFeeExtraData(extra []byte) (uint64, uint64, uint64) {
+	// Best effort to decode the extraData for every block in the chain's history,
+	// including blocks before the minimum base fee feature was enabled.
+	if len(extra) == 9 {
+		// This is Holocene extraData
+		denominator, elasticity := DecodeHolocene1559Params(extra[1:9])
+		return denominator, elasticity, 0
+	} else if len(extra) == 17 {
+		// Decode extraData when the minimum base fee fork is enabled
+		denominator, elasticity := DecodeHolocene1559Params(extra[1:9])
+		minBaseFee := binary.BigEndian.Uint64(extra[9:])
+		return denominator, elasticity, minBaseFee
+	}
+	return 0, 0, 0
+}
+
+// EncodeMinBaseFeeExtraData encodes the EIP-1559 and minBaseFee parameters into the header 'ExtraData' format.
+// Will panic if EIP-1559 parameters are outside uint32 range.
+func EncodeMinBaseFeeExtraData(denom, elasticity, minBaseFee uint64) []byte {
+	r := make([]byte, 17)
+	if denom > gomath.MaxUint32 || elasticity > gomath.MaxUint32 {
+		panic("eip-1559 parameters out of uint32 range")
+	}
+	r[0] = 1
+	binary.BigEndian.PutUint32(r[1:5], uint32(denom))
+	binary.BigEndian.PutUint32(r[5:9], uint32(elasticity))
+	binary.BigEndian.PutUint64(r[9:], minBaseFee)
+	return r
+}
+
+// ValidateMinBaseFeeExtraData checks if the header extraData is valid according to the minimum base fee feature.
+func ValidateMinBaseFeeExtraData(extra []byte) error {
+	if len(extra) != 17 {
+		return fmt.Errorf("minBaseFee extraData should be 17 bytes, got %d", len(extra))
+	}
+	if extra[0] != 1 {
+		return fmt.Errorf("minBaseFee version should be 1, got %d", extra[0])
+	}
+	return ValidateHolocene1559Params(extra[1:9])
+}
+
 // CalcBaseFee calculates the basefee of the header.
 // The time belongs to the new block to check which upgrades are active.
 func CalcBaseFee(config *params.ChainConfig, parent *types.Header, time uint64) *big.Int {
@@ -141,7 +187,13 @@ func CalcBaseFee(config *params.ChainConfig, parent *types.Header, time uint64) 
 	}
 	elasticity := config.ElasticityMultiplier()
 	denominator := config.BaseFeeChangeDenominator(time)
-	if config.IsHolocene(parent.Time) {
+	var minBaseFee uint64
+	if config.IsConfigurableMinBaseFee(parent.Time) {
+		if err := ValidateMinBaseFeeExtraData(parent.Extra); err != nil {
+			panic(err)
+		}
+		denominator, elasticity, minBaseFee = DecodeMinBaseFeeExtraData(parent.Extra)
+	} else if config.IsHolocene(parent.Time) {
 		denominator, elasticity = DecodeHoloceneExtraData(parent.Extra)
 		if denominator == 0 {
 			// this shouldn't happen as the ExtraData should have been validated prior
@@ -149,14 +201,11 @@ func CalcBaseFee(config *params.ChainConfig, parent *types.Header, time uint64) 
 		}
 	}
 	parentGasTarget := parent.GasLimit / elasticity
-	// If the parent gasUsed is the same as the target, the baseFee remains unchanged.
-	if parent.GasUsed == parentGasTarget {
-		return new(big.Int).Set(parent.BaseFee)
-	}
 
 	var (
-		num   = new(big.Int)
-		denom = new(big.Int)
+		num     = new(big.Int)
+		denom   = new(big.Int)
+		baseFee = new(big.Int)
 	)
 
 	if parent.GasUsed > parentGasTarget {
@@ -167,10 +216,11 @@ func CalcBaseFee(config *params.ChainConfig, parent *types.Header, time uint64) 
 		num.Div(num, denom.SetUint64(parentGasTarget))
 		num.Div(num, denom.SetUint64(denominator))
 		if num.Cmp(common.Big1) < 0 {
-			return num.Add(parent.BaseFee, common.Big1)
+			baseFee = num.Add(parent.BaseFee, common.Big1)
+		} else {
+			baseFee = num.Add(parent.BaseFee, num)
 		}
-		return num.Add(parent.BaseFee, num)
-	} else {
+	} else if parent.GasUsed < parentGasTarget {
 		// Otherwise if the parent block used less gas than its target, the baseFee should decrease.
 		// max(0, parentBaseFee * gasUsedDelta / parentGasTarget / baseFeeChangeDenominator)
 		num.SetUint64(parentGasTarget - parent.GasUsed)
@@ -178,10 +228,21 @@ func CalcBaseFee(config *params.ChainConfig, parent *types.Header, time uint64) 
 		num.Div(num, denom.SetUint64(parentGasTarget))
 		num.Div(num, denom.SetUint64(denominator))
 
-		baseFee := num.Sub(parent.BaseFee, num)
+		baseFee = num.Sub(parent.BaseFee, num)
 		if baseFee.Cmp(common.Big0) < 0 {
 			baseFee = common.Big0
 		}
-		return baseFee
+	} else {
+		// If the parent gasUsed is the same as the target, the baseFee remains unchanged.
+		baseFee = parent.BaseFee
 	}
+
+	// Enforce minimum base fee. If the minimum base fee is 0, it has no effect.
+	if config.IsConfigurableMinBaseFee(parent.Time) {
+		minBaseFeeBig := new(big.Int).SetUint64(minBaseFee)
+		if baseFee.Cmp(minBaseFeeBig) < 0 {
+			baseFee = minBaseFeeBig
+		}
+	}
+	return baseFee
 }

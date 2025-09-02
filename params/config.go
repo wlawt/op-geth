@@ -853,6 +853,11 @@ func (c *ChainConfig) IsOptimismPreBedrock(num *big.Int) bool {
 	return c.IsOptimism() && !c.IsBedrock(num)
 }
 
+// IsConfigurableMinBaseFee returns true if the configurable minBaseFee feature is enabled.
+func (c *ChainConfig) IsConfigurableMinBaseFee(time uint64) bool {
+	return c.IsOptimismJovian(time)
+}
+
 // CheckCompatible checks whether scheduled fork transitions have been imported
 // with a mismatching chain configuration.
 func (c *ChainConfig) CheckCompatible(newcfg *ChainConfig, height, time uint64, genesisTimestamp *uint64) *ConfigCompatError {
@@ -1312,7 +1317,7 @@ type Rules struct {
 	IsOptimismBedrock, IsOptimismRegolith                   bool
 	IsOptimismCanyon, IsOptimismFjord                       bool
 	IsOptimismGranite, IsOptimismHolocene                   bool
-	IsOptimismIsthmus                                       bool
+	IsOptimismIsthmus, IsOptimismJovian                     bool
 }
 
 // Rules ensures c's ChainID is not nil.
@@ -1352,6 +1357,7 @@ func (c *ChainConfig) Rules(num *big.Int, isMerge bool, timestamp uint64) Rules 
 		IsOptimismGranite:  isMerge && c.IsOptimismGranite(timestamp),
 		IsOptimismHolocene: isMerge && c.IsOptimismHolocene(timestamp),
 		IsOptimismIsthmus:  isMerge && c.IsOptimismIsthmus(timestamp),
+		IsOptimismJovian:   isMerge && c.IsOptimismJovian(timestamp),
 	}
 }
 

@@ -122,6 +122,7 @@ type generateParams struct {
 	eip1559Params []byte             // Optional EIP-1559 parameters
 	interrupt     *atomic.Int32      // Optional interruption signal to pass down to worker.generateWork
 	isUpdate      bool               // Optional flag indicating that this is building a discardable update
+	minBaseFee    uint64             // Optional minimum base fee
 
 	rpcCtx context.Context // context to control block-building RPC work. No RPC allowed if nil.
 }
@@ -285,7 +286,7 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 		// configure the gas limit of pending blocks with the miner gas limit config when using optimism
 		header.GasLimit = miner.config.GasCeil
 	}
-	if miner.chainConfig.IsHolocene(header.Time) {
+	if cfg := miner.chainConfig; cfg.IsHolocene(header.Time) {
 		if err := eip1559.ValidateHolocene1559Params(genParams.eip1559Params); err != nil {
 			return nil, err
 		}
@@ -296,7 +297,11 @@ func (miner *Miner) prepareWork(genParams *generateParams, witness bool) (*envir
 			d = miner.chainConfig.BaseFeeChangeDenominator(header.Time)
 			e = miner.chainConfig.ElasticityMultiplier()
 		}
-		header.Extra = eip1559.EncodeHoloceneExtraData(d, e)
+		if cfg.IsConfigurableMinBaseFee(header.Time) {
+			header.Extra = eip1559.EncodeMinBaseFeeExtraData(d, e, genParams.minBaseFee)
+		} else {
+			header.Extra = eip1559.EncodeHoloceneExtraData(d, e)
+		}
 	} else if genParams.eip1559Params != nil {
 		return nil, errors.New("got eip1559 params, expected none")
 	}
